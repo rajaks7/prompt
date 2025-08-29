@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core Colors */
+    --color-background: #FAFAFA; /* warm off-white */
+    --color-foreground: #1E293B; /* rich charcoal */
+    --color-card: #FFFFFF; /* pure white */
+    --color-card-foreground: #1E293B; /* rich charcoal */
+    --color-popover: #FFFFFF; /* pure white */
+    --color-popover-foreground: #1E293B; /* rich charcoal */
+    --color-muted: #F1F5F9; /* light slate */
+    --color-muted-foreground: #64748B; /* medium slate */
+    --color-border: #E2E8F0; /* light slate border */
+    --color-input: #FFFFFF; /* pure white */
+    --color-ring: #2563EB; /* deep blue */
+
+    /* Brand Colors */
+    --color-primary: #2563EB; /* deep blue */
+    --color-primary-foreground: #FFFFFF; /* white */
+    --color-secondary: #64748B; /* sophisticated slate */
+    --color-secondary-foreground: #FFFFFF; /* white */
+    --color-accent: #0EA5E9; /* bright sky blue */
+    --color-accent-foreground: #FFFFFF; /* white */
+
+    /* Status Colors */
+    --color-success: #059669; /* forest green */
+    --color-success-foreground: #FFFFFF; /* white */
+    --color-warning: #D97706; /* warm amber */
+    --color-warning-foreground: #FFFFFF; /* white */
+    --color-error: #DC2626; /* clear red */
+    --color-error-foreground: #FFFFFF; /* white */
+    --color-destructive: #DC2626; /* clear red */
+    --color-destructive-foreground: #FFFFFF; /* white */
+
+    /* Radius */
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+  }
+
+  body, p, span, div {
+    font-family: 'Inter', sans-serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
