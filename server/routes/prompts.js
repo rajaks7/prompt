@@ -54,9 +54,29 @@ router.get('/', async (req, res) => {
       baseQuery += ` WHERE ${whereClauses.join(' AND ')}`;
     }
     
-    let orderBy = ' ORDER BY p.created_at DESC';
-    if(sort === 'rating_desc') orderBy = ' ORDER BY p.rating DESC NULLS LAST, p.created_at DESC';
-    if(sort === 'title_asc') orderBy = ' ORDER BY p.title ASC';
+    let orderBy = ' ORDER BY p.created_at DESC'; // default
+switch(sort) {
+  case 'created_at_desc':
+    orderBy = ' ORDER BY p.created_at DESC';
+    break;
+  case 'created_at_asc':
+    orderBy = ' ORDER BY p.created_at ASC';
+    break;
+  case 'title_asc':
+    orderBy = ' ORDER BY p.title ASC';
+    break;
+  case 'title_desc':
+    orderBy = ' ORDER BY p.title DESC';
+    break;
+  case 'rating_desc':
+    orderBy = ' ORDER BY p.rating DESC NULLS LAST, p.created_at DESC';
+    break;
+  case 'rating_asc':
+    orderBy = ' ORDER BY p.rating ASC NULLS LAST, p.created_at DESC';
+    break;
+  default:
+    orderBy = ' ORDER BY p.created_at DESC';
+}
     
     baseQuery += orderBy;
 
@@ -131,6 +151,23 @@ router.patch('/:id/favorite', async (req, res) => {
         const updatedPrompt = await pool.query(
             "UPDATE prompts SET is_favorite = $1 WHERE id = $2 RETURNING id, is_favorite",
             [is_favorite, id]
+        );
+        if (updatedPrompt.rows.length === 0) {
+            return res.status(404).json({ msg: "Prompt not found" });
+        }
+        res.json(updatedPrompt.rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+// Add this route to increment view count
+router.patch('/:id/view', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updatedPrompt = await pool.query(
+            "UPDATE prompts SET usage_count = COALESCE(usage_count, 0) + 1 WHERE id = $1 RETURNING id, usage_count",
+            [id]
         );
         if (updatedPrompt.rows.length === 0) {
             return res.status(404).json({ msg: "Prompt not found" });

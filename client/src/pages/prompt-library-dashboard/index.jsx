@@ -1,216 +1,351 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Search, Star, Copy, Heart, Grid, List, Filter, Calendar, Zap, Download, ArrowUpDown, Eye, Trash2, Share2 } from 'lucide-react';
+import { Search, Filter, Grid, List, Heart, Copy, Share, Download, X, Star, Calendar, Eye, Tag, Trash2, Mail, MessageCircle, ChevronDown, User, LogOut } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
-// Helper function to get default category image
-const getCategoryDefaultImage = (categoryName) => {
-  const defaults = {
-    'Content Creation': '/images/content-creation.jpg',
-    'Code Generation': '/images/code-generation.jpg', 
-    'Data Analysis': '/images/data-analysis.jpg',
-    'Creative Writing': '/images/creative-writing.jpg',
-    'Research': '/images/research.jpg',
-    'Marketing': '/images/marketing.jpg',
-    'Technical': '/images/technical.jpg',
-    'Image': '/images/image-category.jpg',
-    'Video': '/images/video-category.jpg',
-    'Audio': '/images/audio-category.jpg'
-  };
-  return defaults[categoryName] || '/images/default-prompt.jpg';
+// Debug and hide headers - ULTIMATE VERSION
+const HideOriginalHeader = () => {
+  React.useEffect(() => {
+    const findAndHideHeaders = () => {
+      console.log('=== DEBUGGING HEADERS ===');
+      
+      // Find all headers
+      const allHeaders = document.querySelectorAll('header');
+      console.log('Found headers:', allHeaders.length);
+      
+      allHeaders.forEach((header, index) => {
+        console.log(`Header ${index}:`, header.outerHTML.substring(0, 200));
+        console.log(`Header ${index} classes:`, header.className);
+        console.log(`Header ${index} text:`, header.textContent?.substring(0, 100));
+        
+        // Hide if it's not our library header
+        if (!header.classList.contains('library-header')) {
+          console.log(`Hiding header ${index}`);
+          header.style.display = 'none';
+          header.style.visibility = 'hidden';
+          header.style.height = '0px';
+          header.style.overflow = 'hidden';
+        }
+      });
+
+      // Also find elements containing "Welcome back"
+      const welcomeElements = document.querySelectorAll('*');
+      welcomeElements.forEach(element => {
+        if (element.textContent && element.textContent.includes('Welcome back')) {
+          console.log('Found welcome element:', element.tagName, element.className);
+          
+          // Try to hide the parent container
+          let parent = element.closest('header') || element.closest('div');
+          if (parent && !parent.classList.contains('library-header')) {
+            console.log('Hiding welcome parent:', parent.tagName, parent.className);
+            parent.style.display = 'none';
+          }
+        }
+      });
+
+      // Nuclear option - hide everything that looks like a header
+      document.querySelectorAll('div').forEach(div => {
+        if (div.textContent && div.textContent.includes('Welcome back') && 
+            !div.classList.contains('library-header')) {
+          console.log('Nuclear hiding div with welcome:', div.className);
+          div.style.display = 'none';
+        }
+      });
+    };
+
+    // Run immediately and with delays
+    findAndHideHeaders();
+    setTimeout(findAndHideHeaders, 200);
+    setTimeout(findAndHideHeaders, 1000);
+
+    // CSS backup
+    const style = document.createElement('style');
+    style.innerHTML = `
+      header:not(.library-header) { display: none !important; }
+      div:has(h1:contains("Welcome back")):not(.library-header) { display: none !important; }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+    };
+  }, []);
+  
+  return null;
 };
 
-// Elegant Filter Chip Component
-const FilterChip = ({ label, value, isActive, onClick, color = "blue" }) => (
-  <button
-    onClick={() => onClick(value)}
-    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-      isActive
-        ? `bg-${color}-100 text-${color}-700 border-${color}-200 shadow-sm`
-        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200'
-    } border hover:shadow-md`}
-  >
-    {label}
-  </button>
-);
-
-// Beautiful Prompt Card Component
-const PromptCard = ({ prompt, onSelect, onToggleFavorite, onCopy, selected, onToggleSelect }) => {
-  const { 
-    id, title, tool_name, tool_color, rating, tags, is_favorite, 
-    attachment_filename, category_image_url, category_name, prompt_text, 
-    usage_count, created_at 
-  } = prompt;
+// Compact User Menu Component
+const CompactUserMenu = () => {
+  const [isOpen, setIsOpen] = useState(false);
   
+  // Mock user data - replace with your actual user data
+  const user = {
+    name: 'John Doe',
+    role: 'admin',
+    avatar: 'bg-blue-500'
+  };
+  
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+      >
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold ${user.avatar}`}>
+          {user.name.charAt(0)}
+        </div>
+        <div className="hidden sm:block text-left">
+          <p className="text-sm font-medium text-gray-900">{user.name}</p>
+          <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+        </div>
+        <ChevronDown size={14} className="text-gray-500" />
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+          <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+            <div className="flex items-center space-x-2">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-semibold ${user.avatar}`}>
+                {user.name.charAt(0)}
+              </div>
+              <div>
+                <p className="font-medium text-gray-900 text-sm">{user.name}</p>
+                <p className="text-xs text-blue-600 capitalize">{user.role}</p>
+              </div>
+            </div>
+          </div>
+          <div className="py-2">
+            <button className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <User size={14} />
+              <span>Profile</span>
+            </button>
+            <button className="w-full flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+              <LogOut size={14} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Color palette for categories (when no category color in DB)
+const categoryColors = [
+  '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E',
+  '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1',
+  '#8B5CF6', '#A855F7', '#C026D3', '#DB2777', '#E11D48'
+];
+
+const getCategoryColor = (categoryName) => {
+  if (!categoryName) return '#6B7280';
+  const index = categoryName.length % categoryColors.length;
+  return categoryColors[index];
+};
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  return format(date, 'MMM dd');
+};
+
+const PromptCard = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMode, onCardView }) => {
+  const navigate = useNavigate();
+  const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  const {
+    id, title, prompt_text, tool_name, tool_color, category_name, category_image_url,
+    rating, usage_count, is_favorite, attachment_filename, created_at, tags
+  } = prompt;
+
+  // Determine image to display (attachment first, then category image, then default)
+  const displayImage = !imageError && (attachment_filename || category_image_url) 
+    ? (attachment_filename 
+        ? `http://localhost:5000/uploads/${attachment_filename}` 
+        : category_image_url)
+    : null;
+
+  const handleCardClick = () => {
+    if (!selectionMode) {
+      onCardView(id);
+      navigate(`/library/${id}`);
+    }
+  };
+
   const handleCopy = (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(prompt_text);
-    onCopy && onCopy();
+    // You could add a toast notification here
   };
-  
+
   const handleFavorite = (e) => {
     e.stopPropagation();
     onToggleFavorite(id, !is_favorite);
   };
 
-  const handleSelect = (e) => {
+  const handleShare = (e) => {
     e.stopPropagation();
-    onToggleSelect(id);
+    // Share functionality - could open a modal with sharing options
   };
 
-  // Determine image to show
-  const displayImage = attachment_filename 
-    ? `http://localhost:5000/uploads/${attachment_filename}`
-    : category_image_url || getCategoryDefaultImage(category_name);
-  
   // Create excerpt (2 lines max)
-  const excerpt = prompt_text?.length > 120 ? prompt_text.substring(0, 120) + '...' : prompt_text;
-  
+  const excerpt = prompt_text?.length > 120 
+    ? prompt_text.substring(0, 120) + '...' 
+    : prompt_text || '';
+
   return (
     <div 
-      onClick={() => onSelect(id)} 
-      className={`group relative bg-white rounded-2xl shadow-sm border transition-all duration-300 cursor-pointer overflow-hidden ${
-        selected ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200 hover:shadow-lg hover:-translate-y-1'
-      }`}
+      className={`bg-white rounded-xl border-2 transition-all duration-300 cursor-pointer group relative ${
+        isSelected ? 'border-blue-500 shadow-xl' : 'border-gray-100 hover:border-gray-200'
+      } ${isHovered ? 'shadow-xl transform -translate-y-2' : 'shadow-md'} max-w-sm w-full`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={handleCardClick}
     >
       {/* Selection Checkbox */}
-      <div className="absolute top-3 left-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={handleSelect}
-          className="w-5 h-5 text-blue-600 border-white bg-white/80 backdrop-blur-sm rounded shadow-lg focus:ring-2 focus:ring-blue-500"
-          onClick={handleSelect}
-        />
-      </div>
+      {selectionMode && (
+        <div className="absolute top-3 left-3 z-10">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelect(id);
+            }}
+            className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+          />
+        </div>
+      )}
 
       {/* Image Section */}
-      <div className="relative h-40 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+      <div className="relative h-36 rounded-t-xl overflow-hidden bg-gray-100">
         {displayImage ? (
           <img 
             src={displayImage} 
             alt={title}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={(e) => {
-              e.target.src = getCategoryDefaultImage(category_name);
-            }}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
-            <Zap size={32} className="text-blue-500" />
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+            <div className="text-center">
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center mb-2 mx-auto"
+                style={{ backgroundColor: getCategoryColor(category_name) + '20' }}
+              >
+                <Tag size={24} style={{ color: getCategoryColor(category_name) }} />
+              </div>
+              <span className="text-xs text-gray-500 font-medium">{category_name || 'Uncategorized'}</span>
+            </div>
           </div>
         )}
         
-        {/* AI Tool Badge */}
-        {tool_name && (
-          <div 
-            className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold text-white shadow-lg backdrop-blur-sm"
-            style={{ backgroundColor: tool_color || '#6B7280' }}
+        {/* Quick Actions Overlay */}
+        <div className={`absolute top-2 right-2 flex gap-1 transition-opacity duration-200 ${
+          isHovered ? 'opacity-100' : 'opacity-0'
+        }`}>
+          <button
+            onClick={handleFavorite}
+            className={`p-1.5 rounded-full backdrop-blur-sm transition-colors ${
+              is_favorite 
+                ? 'bg-red-500 text-white' 
+                : 'bg-white/80 text-gray-600 hover:text-red-500'
+            }`}
           >
-            {tool_name}
-          </div>
-        )}
-
-        {/* Favorite Button */}
-        <button
-          onClick={handleFavorite}
-          className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-200 ${
-            is_favorite 
-              ? 'bg-red-500 text-white shadow-lg' 
-              : 'bg-white/80 backdrop-blur-sm text-gray-600 hover:bg-white hover:text-red-500'
-          }`}
-        >
-          <Heart size={16} className={is_favorite ? 'fill-current' : ''} />
-        </button>
+            <Heart size={14} className={is_favorite ? 'fill-current' : ''} />
+          </button>
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-full bg-white/80 text-gray-600 hover:text-blue-500 backdrop-blur-sm transition-colors"
+          >
+            <Copy size={14} />
+          </button>
+          <button
+            onClick={handleShare}
+            className="p-1.5 rounded-full bg-white/80 text-gray-600 hover:text-green-500 backdrop-blur-sm transition-colors"
+          >
+            <Share size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-5">
-        {/* Title */}
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight">
-          {title}
-        </h3>
-
-        {/* Excerpt - exactly 2 lines */}
-        <p className="text-sm text-gray-600 mb-4 leading-relaxed" style={{
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          minHeight: '2.5rem'
-        }}>
-          {excerpt}
-        </p>
-
-        {/* Rating */}
-        {rating && (
-          <div className="flex items-center mb-3">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                size={14}
-                className={`${
-                  i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                } mr-1`}
-              />
-            ))}
-            <span className="text-xs text-gray-500 ml-2">({rating}/5)</span>
-          </div>
-        )}
-
-        {/* Meta Information */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-          <span>{format(new Date(created_at), 'MMM d, yyyy')}</span>
-          <div className="flex items-center space-x-3">
-            <span className="flex items-center">
-              <Copy size={12} className="mr-1" />
-              {usage_count || 0}
-            </span>
-            {category_name && (
-              <span className="px-2 py-1 bg-gray-100 rounded-full text-xs">
-                {category_name}
-              </span>
-            )}
+      <div className="p-3 space-y-2">
+        {/* Tool Tag & Usage Count */}
+        <div className="flex items-center justify-between">
+          <span 
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+            style={{ backgroundColor: tool_color || '#6B7280' }}
+          >
+            {tool_name || 'No Tool'}
+          </span>
+          <div className="flex items-center text-xs text-gray-500">
+            <Eye size={12} className="mr-1" />
+            {usage_count || 0}
           </div>
         </div>
 
-        {/* Tags */}
-        {tags && tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {tags.slice(0, 3).map((tag, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium"
-              >
-                #{tag}
-              </span>
-            ))}
-            {tags.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded-md text-xs">
-                +{tags.length - 3} more
-              </span>
-            )}
-          </div>
-        )}
+        {/* Title */}
+        <h3 className="font-medium text-gray-900 text-sm leading-tight line-clamp-2 mb-1">
+          {title}
+        </h3>
 
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          <button
-            onClick={handleCopy}
-            className="flex items-center space-x-2 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200 text-sm font-medium"
-          >
-            <Copy size={14} />
-            <span>Copy</span>
-          </button>
+        {/* Excerpt */}
+        <p className="text-xs text-gray-600 line-clamp-2 h-8 mb-2">
+          {excerpt}
+        </p>
+
+        {/* Category & Tags - Different placement */}
+        <div className="space-y-1.5">
+          {/* Category */}
+          <div className="flex">
+            <span 
+              className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+              style={{ backgroundColor: getCategoryColor(category_name) }}
+            >
+              {category_name || 'Uncategorized'}
+            </span>
+          </div>
           
-          <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200">
-              <Share2 size={14} />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200">
-              <Eye size={14} />
-            </button>
+          {/* Tags */}
+          {tags && tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {tags.slice(0, 3).map((tag, index) => (
+                <span key={index} className="px-1.5 py-0.5 bg-gray-200 text-gray-700 text-xs rounded">
+                  {tag}
+                </span>
+              ))}
+              {tags.length > 3 && (
+                <span className="px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
+                  +{tags.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between text-xs text-gray-500 pt-1.5 border-t border-gray-100">
+          <div className="flex items-center">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star 
+                key={star} 
+                size={10} 
+                className={star <= Math.round(rating || 0) 
+                  ? 'text-yellow-400 fill-current' 
+                  : 'text-gray-300'
+                } 
+              />
+            ))}
+            <span className="ml-1">({rating?.toFixed(1) || '0.0'})</span>
+          </div>
+          <div className="flex items-center">
+            <Calendar size={10} className="mr-1" />
+            {formatDate(created_at)}
           </div>
         </div>
       </div>
@@ -218,109 +353,324 @@ const PromptCard = ({ prompt, onSelect, onToggleFavorite, onCopy, selected, onTo
   );
 };
 
-// Main Library Component
+const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMode, onCardView }) => {
+  const navigate = useNavigate();
+  const [imageError, setImageError] = useState(false);
+  
+  const {
+    id, title, prompt_text, tool_name, tool_color, category_name,
+    rating, usage_count, is_favorite, attachment_filename, category_image_url, created_at
+  } = prompt;
+
+  const displayImage = !imageError && (attachment_filename || category_image_url) 
+    ? (attachment_filename 
+        ? `http://localhost:5000/uploads/${attachment_filename}` 
+        : category_image_url)
+    : null;
+
+  const handleRowClick = () => {
+    if (!selectionMode) {
+      onCardView(id);
+      navigate(`/library/${id}`);
+    }
+  };
+
+  return (
+    <tr 
+      className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+      onClick={handleRowClick}
+    >
+      {selectionMode && (
+        <td className="px-6 py-4">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelect(id);
+            }}
+            className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+          />
+        </td>
+      )}
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 mr-4 flex-shrink-0">
+            {displayImage ? (
+              <img 
+                src={displayImage} 
+                alt={title}
+                className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Tag size={16} style={{ color: getCategoryColor(category_name) }} />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-medium text-gray-900 text-sm truncate max-w-xs">{title}</h4>
+            <p className="text-xs text-gray-500 truncate max-w-xs">
+              {prompt_text?.substring(0, 100)}...
+            </p>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <span 
+          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+          style={{ backgroundColor: tool_color || '#6B7280' }}
+        >
+          {tool_name || 'No Tool'}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <span 
+          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+          style={{ backgroundColor: getCategoryColor(category_name) }}
+        >
+          {category_name || 'Uncategorized'}
+        </span>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star 
+              key={star} 
+              size={12} 
+              className={star <= Math.round(rating || 0) 
+                ? 'text-yellow-400 fill-current' 
+                : 'text-gray-300'
+              } 
+            />
+          ))}
+          <span className="ml-1 text-xs text-gray-600">({rating?.toFixed(1) || '0.0'})</span>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-600">{usage_count || 0}</td>
+      <td className="px-6 py-4 text-sm text-gray-600">{formatDate(created_at)}</td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(id, !is_favorite);
+            }}
+            className={`p-1 rounded transition-colors ${
+              is_favorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+            }`}
+          >
+            <Heart size={16} className={is_favorite ? 'fill-current' : ''} />
+          </button>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(prompt_text);
+            }}
+            className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+          >
+            <Copy size={16} />
+          </button>
+          <button 
+            onClick={(e) => e.stopPropagation()}
+            className="p-1 text-gray-400 hover:text-green-500 transition-colors"
+          >
+            <Share size={16} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+const ShareModal = ({ isOpen, onClose, selectedPrompts, prompts }) => {
+  if (!isOpen) return null;
+
+  const selectedPromptData = prompts.filter(p => selectedPrompts.includes(p.id));
+  
+  const handleWhatsAppShare = () => {
+    const text = selectedPromptData.map(p => `${p.title}: ${p.prompt_text}`).join('\n\n');
+    const encodedText = encodeURIComponent(text);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+  };
+
+  const handleEmailShare = () => {
+    const subject = encodeURIComponent('Shared Prompts from Library');
+    const body = selectedPromptData.map(p => `${p.title}:\n${p.prompt_text}\n\n`).join('');
+    const encodedBody = encodeURIComponent(body);
+    window.open(`mailto:?subject=${subject}&body=${encodedBody}`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Share Prompts</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          Share {selectedPrompts.length} selected prompt{selectedPrompts.length > 1 ? 's' : ''}
+        </p>
+        
+        <div className="space-y-3">
+          <button
+            onClick={handleWhatsAppShare}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+          >
+            <MessageCircle size={20} />
+            Share via WhatsApp
+          </button>
+          
+          <button
+            onClick={handleEmailShare}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <Mail size={20} />
+            Share via Email
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FilterDropdown = ({ name, label, value, onChange, options }) => (
+  <div className="min-w-0">
+    <label className="text-xs font-semibold text-gray-600 mb-1 block">{label}</label>
+    <select 
+      name={name} 
+      value={value} 
+      onChange={onChange} 
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    >
+      <option value="">All</option>
+      {options.map(opt => (
+        <option key={opt.id || opt.value} value={opt.id || opt.value}>
+          {opt.name}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
 const LibraryPage = () => {
   const navigate = useNavigate();
   const [prompts, setPrompts] = useState([]);
   const [filteredPrompts, setFilteredPrompts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // grid or table
-  const [selectedPrompts, setSelectedPrompts] = useState([]);
-  const [showFilters, setShowFilters] = useState(false);
-  
-  // Filter states
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilters, setActiveFilters] = useState({
-    tool: '',
-    category: '',
-    rating: '',
-    favorites: false,
-    dateRange: 'all'
+  const [filters, setFilters] = useState({ 
+    search: '', 
+    tool: '', 
+    category: '', 
+    rating: '', 
+    sort: 'created_at_desc', 
+    favoritesOnly: false 
   });
-  const [sortBy, setSortBy] = useState('created_at_desc');
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedPrompts, setSelectedPrompts] = useState([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const { tools, categories } = useMasterData();
   
-  // Master data
-  const [tools, setTools] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const searchInputRef = useRef(null);
 
-  // Fetch master data
+  // Hide original header for this page only
   useEffect(() => {
-    const fetchMasterData = async () => {
-      try {
-        const [toolsRes, categoriesRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/ai_tools'),
-          axios.get('http://localhost:5000/api/categories')
-        ]);
-        setTools(toolsRes.data);
-        setCategories(categoriesRes.data);
-      } catch (err) {
-        console.error('Failed to fetch master data:', err);
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .min-h-screen > div > main > header,
+      body > div > div > header,
+      header:not(.library-header) {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
       }
     };
-    fetchMasterData();
   }, []);
 
-  // Fetch prompts
+  // Fetch prompts with applied filters
   useEffect(() => {
     const fetchPrompts = async () => {
       setLoading(true);
       try {
-        const params = {
-          search: searchQuery,
-          tool: activeFilters.tool,
-          category: activeFilters.category,
-          rating: activeFilters.rating,
-          favoritesOnly: activeFilters.favorites,
-          sort: sortBy
-        };
-        
-        const response = await axios.get('http://localhost:5000/api/prompts', { params });
+        const response = await axios.get('http://localhost:5000/api/prompts', { 
+          params: filters 
+        });
         setPrompts(response.data);
         setFilteredPrompts(response.data);
-      } catch (err) {
-        console.error('Failed to fetch prompts:', err);
-        setPrompts([]);
-        setFilteredPrompts([]);
-      } finally {
-        setLoading(false);
+      } catch (err) { 
+        console.error('Failed to fetch prompts:', err); 
+      } finally { 
+        setLoading(false); 
       }
     };
-
     fetchPrompts();
-  }, [searchQuery, activeFilters, sortBy]);
+  }, [filters]);
 
-  // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
-    setActiveFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  // Handle view count increment when card is clicked
+  const handleCardView = async (promptId) => {
+    try {
+      // Increment usage count in database
+      await axios.patch(`http://localhost:5000/api/prompts/${promptId}/view`);
+      
+      // Update local state to reflect the change
+      setPrompts(prev => prev.map(p => 
+        p.id === promptId ? { ...p, usage_count: (p.usage_count || 0) + 1 } : p
+      ));
+      setFilteredPrompts(prev => prev.map(p => 
+        p.id === promptId ? { ...p, usage_count: (p.usage_count || 0) + 1 } : p
+      ));
+    } catch (error) {
+      console.error('Failed to increment view count:', error);
+    }
   };
 
-  // Toggle favorite
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    // Search is handled via filters, ensure focus stays
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  };
+
+  const handleFavoriteToggle = () => {
+    setFilters(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }));
+  };
+  
   const handleToggleFavorite = async (id, newStatus) => {
     try {
       await axios.patch(`http://localhost:5000/api/prompts/${id}/favorite`, { 
         is_favorite: newStatus 
       });
-      
-      setPrompts(prev => prev.map(p => 
-        p.id === id ? { ...p, is_favorite: newStatus } : p
-      ));
-      setFilteredPrompts(prev => prev.map(p => 
-        p.id === id ? { ...p, is_favorite: newStatus } : p
-      ));
-    } catch (error) {
-      console.error("Failed to update favorite status", error);
+      setPrompts(prev => prev.map(p => p.id === id ? { ...p, is_favorite: newStatus } : p));
+      setFilteredPrompts(prev => prev.map(p => p.id === id ? { ...p, is_favorite: newStatus } : p));
+    } catch (error) { 
+      console.error("Failed to update favorite status", error); 
     }
   };
 
-  // Handle selection
-  const handleToggleSelect = (id) => {
+  const handleSelectPrompt = (id) => {
     setSelectedPrompts(prev => 
       prev.includes(id) 
-        ? prev.filter(pid => pid !== id)
-        : [...prev, id]
+        ? prev.filter(p => p !== id)
+        : prev.length < 10 
+          ? [...prev, id] 
+          : prev
     );
   };
 
@@ -328,330 +678,406 @@ const LibraryPage = () => {
     if (selectedPrompts.length === filteredPrompts.length) {
       setSelectedPrompts([]);
     } else {
-      setSelectedPrompts(filteredPrompts.map(p => p.id));
+      setSelectedPrompts(filteredPrompts.slice(0, 10).map(p => p.id));
     }
   };
 
-  // Handle copy notification
-  const handleCopyNotification = () => {
-    // You can add a toast notification here
-    console.log('Prompt copied to clipboard!');
+  const handleExportSelected = () => {
+    if (selectedPrompts.length === 0) return;
+    
+    const selectedData = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
+    const textContent = selectedData.map(prompt => 
+      `Title: ${prompt.title}\n` +
+      `Tool: ${prompt.tool_name}\n` +
+      `Category: ${prompt.category_name}\n` +
+      `Content: ${prompt.prompt_text}\n` +
+      `Rating: ${prompt.rating}/5\n` +
+      `Usage: ${prompt.usage_count} times\n` +
+      `Created: ${new Date(prompt.created_at).toLocaleDateString()}\n\n` +
+      '---\n\n'
+    ).join('');
+    
+    const element = document.createElement('a');
+    const file = new Blob([textContent], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `selected-prompts-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your prompt library...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleDeleteSelected = () => {
+    if (selectedPrompts.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ${selectedPrompts.length} selected prompts?`)) {
+      // Here you would make API calls to delete the selected prompts
+      setPrompts(prev => prev.filter(p => !selectedPrompts.includes(p.id)));
+      setFilteredPrompts(prev => prev.filter(p => !selectedPrompts.includes(p.id)));
+      setSelectedPrompts([]);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-6 py-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>
-              <p className="mt-1 text-gray-500">
-                Discover, organize, and manage your AI prompts
-                {filteredPrompts.length > 0 && (
-                  <span className="ml-2 text-blue-600 font-medium">
-                    • {filteredPrompts.length} prompts found
-                  </span>
-                )}
-              </p>
-            </div>
-
-            {/* Search Bar */}
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search prompts, tags, content..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-96 pl-10 pr-4 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+      {/* Custom Header - No Welcome Message */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>
+            <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold">
+              {filteredPrompts.length} prompts
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* Creative Filters */}
-          <div className="flex items-center space-x-3 flex-wrap gap-y-2">
-            <FilterChip
-              label="All Prompts"
-              value=""
-              isActive={!activeFilters.tool && !activeFilters.category && !activeFilters.favorites}
-              onClick={() => setActiveFilters({ tool: '', category: '', rating: '', favorites: false, dateRange: 'all' })}
-            />
-            
-            <FilterChip
-              label="⭐ Favorites"
-              value="favorites"
-              isActive={activeFilters.favorites}
-              onClick={() => handleFilterChange('favorites', !activeFilters.favorites)}
-              color="red"
-            />
+      {/* Enhanced Search, Sort, Filter Bar with More Visible Silver Gradient */}
+      <div className="bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 border-b shadow-inner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col space-y-4">
+            {/* Main Controls Row */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Search */}
+              <form onSubmit={handleSearchSubmit} className="flex-1 min-w-0">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    name="search"
+                    placeholder="Search prompts, tags, or content..."
+                    value={filters.search}
+                    onChange={handleFilterChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl bg-white/90 backdrop-blur-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                  />
+                </div>
+              </form>
 
-            {/* AI Tools */}
-            {tools.slice(0, 4).map(tool => (
-              <FilterChip
-                key={tool.id}
-                label={tool.name}
-                value={tool.id}
-                isActive={activeFilters.tool === tool.id.toString()}
-                onClick={() => handleFilterChange('tool', activeFilters.tool === tool.id.toString() ? '' : tool.id.toString())}
-                color="purple"
-              />
-            ))}
+              {/* Controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Favorites Toggle */}
+                <button
+                  onClick={handleFavoriteToggle}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+                    filters.favoritesOnly 
+                      ? 'bg-red-500 text-white' 
+                      : 'bg-white/90 text-gray-600 hover:bg-white border border-gray-200'
+                  }`}
+                >
+                  <Heart size={16} className={filters.favoritesOnly ? 'fill-current' : ''} />
+                  Favorites
+                </button>
 
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors duration-200"
-            >
-              <Filter size={16} className="mr-2" />
-              More Filters
-            </button>
-          </div>
+                {/* Sort */}
+                <select
+                  name="sort"
+                  value={filters.sort}
+                  onChange={handleFilterChange}
+                  className="px-4 py-3 border border-gray-200 rounded-xl bg-white/90 text-sm focus:ring-2 focus:ring-blue-500 backdrop-blur-sm"
+                >
+                  <option value="created_at_desc">Newest First</option>
+                  <option value="created_at_asc">Oldest First</option>
+                  <option value="title_asc">Title A-Z</option>
+                  <option value="title_desc">Title Z-A</option>
+                  <option value="rating_desc">Highest Rated</option>
+                  <option value="rating_asc">Lowest Rated</option>
+                </select>
 
-          {/* View Toggle & Actions */}
-          <div className="flex items-center space-x-3">
+                {/* Filter Toggle */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`px-4 py-3 border rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${
+                    showFilters 
+                      ? 'bg-blue-500 text-white border-blue-500' 
+                      : 'bg-white/90 text-gray-600 border-gray-200 hover:bg-white'
+                  }`}
+                >
+                  <Filter size={16} />
+                  Filters
+                </button>
+
+                {/* View Mode */}
+                <div className="flex border border-gray-200 rounded-xl overflow-hidden bg-white/90">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`px-4 py-3 text-sm font-medium transition-colors ${
+                      viewMode === 'grid' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Grid size={16} />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`px-4 py-3 text-sm font-medium transition-colors ${
+                      viewMode === 'table' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <List size={16} />
+                  </button>
+                </div>
+
+                {/* Selection Mode */}
+                <button
+                  onClick={() => {
+                    setSelectionMode(!selectionMode);
+                    if (selectionMode) setSelectedPrompts([]);
+                  }}
+                  className={`px-4 py-3 border rounded-xl text-sm font-medium transition-colors ${
+                    selectionMode 
+                      ? 'bg-blue-500 text-white border-blue-500' 
+                      : 'bg-white/90 text-gray-600 border-gray-200 hover:bg-white'
+                  }`}
+                >
+                  Select
+                </button>
+              </div>
+            </div>
+
             {/* Selection Actions */}
-            {selectedPrompts.length > 0 && (
-              <div className="flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-lg">
-                <span className="text-sm text-blue-700 font-medium">
-                  {selectedPrompts.length} selected
-                </span>
-                <button className="p-1 text-blue-600 hover:text-blue-800">
-                  <Download size={14} />
-                </button>
-                <button className="p-1 text-blue-600 hover:text-blue-800">
-                  <Trash2 size={14} />
-                </button>
+            {selectionMode && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-blue-50/80 rounded-xl backdrop-blur-sm">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm font-medium text-blue-700">
+                    {selectedPrompts.length} selected (max 10)
+                  </span>
+                  <button
+                    onClick={handleSelectAll}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {selectedPrompts.length === Math.min(filteredPrompts.length, 10) ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                
+                {selectedPrompts.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportSelected}
+                      className="px-3 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors flex items-center gap-1"
+                    >
+                      <Download size={14} />
+                      Export
+                    </button>
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      className="px-3 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+                    >
+                      <Share size={14} />
+                      Share
+                    </button>
+                    <button
+                      onClick={handleDeleteSelected}
+                      className="px-3 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Sort */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            >
-              <option value="created_at_desc">Newest First</option>
-              <option value="created_at_asc">Oldest First</option>
-              <option value="rating_desc">Highest Rated</option>
-              <option value="usage_desc">Most Used</option>
-              <option value="title_asc">A-Z</option>
-            </select>
-
-            {/* View Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-colors duration-200 ${
-                  viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Grid size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded-md transition-colors duration-200 ${
-                  viewMode === 'table' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <List size={16} />
-              </button>
-            </div>
+            {/* Expanded Filters */}
+            {showFilters && (
+              <div className="p-4 bg-white/90 rounded-xl border border-gray-200 shadow-sm backdrop-blur-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <FilterDropdown
+                    name="tool"
+                    label="AI Tool"
+                    value={filters.tool}
+                    onChange={handleFilterChange}
+                    options={tools}
+                  />
+                  
+                  <FilterDropdown
+                    name="category"
+                    label="Category"
+                    value={filters.category}
+                    onChange={handleFilterChange}
+                    options={categories}
+                  />
+                  
+                  <div className="min-w-0">
+                    <label className="text-xs font-semibold text-gray-600 mb-1 block">Minimum Rating</label>
+                    <select
+                      name="rating"
+                      value={filters.rating}
+                      onChange={handleFilterChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Any Rating</option>
+                      <option value="4.5">4.5+ Stars</option>
+                      <option value="4.0">4.0+ Stars</option>
+                      <option value="3.5">3.5+ Stars</option>
+                      <option value="3.0">3.0+ Stars</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => {
+                        setFilters({ 
+                          search: '', 
+                          tool: '', 
+                          category: '', 
+                          rating: '', 
+                          sort: 'created_at_desc', 
+                          favoritesOnly: false 
+                        });
+                      }}
+                      className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Clear All Filters
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-6 py-8">
-        {filteredPrompts.length === 0 ? (
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          </div>
+        ) : filteredPrompts.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
               <Search size={24} className="text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No prompts found</h3>
-            <p className="text-gray-500 mb-6">
-              {searchQuery || Object.values(activeFilters).some(v => v) 
-                ? "Try adjusting your search or filters" 
-                : "Start by creating your first prompt"
-              }
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No prompts found</h3>
+            <p className="text-gray-500 mb-4">
+              {filters.favoritesOnly ? 'No favorite prompts found' : 'Try adjusting your search terms or filters'}
             </p>
-            <button 
-              onClick={() => navigate('/create')}
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            <button
+              onClick={() => {
+                setFilters({ 
+                  search: '', 
+                  tool: '', 
+                  category: '', 
+                  rating: '', 
+                  sort: 'created_at_desc', 
+                  favoritesOnly: false 
+                });
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
-              Create First Prompt
+              Clear All Filters
             </button>
           </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
+            {filteredPrompts.map(prompt => (
+              <PromptCard
+                key={prompt.id}
+                prompt={prompt}
+                isSelected={selectedPrompts.includes(prompt.id)}
+                onSelect={handleSelectPrompt}
+                onToggleFavorite={handleToggleFavorite}
+                onCardView={handleCardView}
+                selectionMode={selectionMode}
+              />
+            ))}
+          </div>
         ) : (
-          <>
-            {/* Select All */}
-            <div className="flex items-center justify-between mb-6">
-              <button
-                onClick={handleSelectAll}
-                className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedPrompts.length === filteredPrompts.length}
-                  onChange={handleSelectAll}
-                  className="rounded border-gray-300"
-                />
-                <span>Select All ({filteredPrompts.length})</span>
-              </button>
-            </div>
-
-            {/* Grid View */}
-            {viewMode === 'grid' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredPrompts.map(prompt => (
-                  <PromptCard
-                    key={prompt.id}
-                    prompt={prompt}
-                    onSelect={(id) => navigate(`/library/${id}`)}
-                    onToggleFavorite={handleToggleFavorite}
-                    onCopy={handleCopyNotification}
-                    selected={selectedPrompts.includes(prompt.id)}
-                    onToggleSelect={handleToggleSelect}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Table View */}
-            {viewMode === 'table' && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    {selectionMode && (
+                      <th className="px-6 py-4 text-left">
                         <input
                           type="checkbox"
-                          checked={selectedPrompts.length === filteredPrompts.length}
+                          checked={selectedPrompts.length === Math.min(filteredPrompts.length, 10)}
                           onChange={handleSelectAll}
-                          className="rounded border-gray-300"
+                          className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
                         />
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Title
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        AI Tool
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rating
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Usage
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredPrompts.map(prompt => (
-                      <tr 
-                        key={prompt.id} 
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => navigate(`/library/${id}`)}
-                      >
-                        <td className="px-6 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedPrompts.includes(prompt.id)}
-                            onChange={() => handleToggleSelect(prompt.id)}
-                            className="rounded border-gray-300"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            {prompt.is_favorite && (
-                              <Heart size={14} className="text-red-500 fill-current mr-2" />
-                            )}
-                            <div>
-                              <div className="font-medium text-gray-900">{prompt.title}</div>
-                              <div className="text-sm text-gray-500 truncate max-w-xs">
-                                {prompt.prompt_text?.substring(0, 60)}...
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span 
-                            className="px-2 py-1 text-xs font-medium rounded-full text-white"
-                            style={{ backgroundColor: prompt.tool_color || '#6B7280' }}
-                          >
-                            {prompt.tool_name}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          {prompt.rating && (
-                            <div className="flex items-center">
-                              <Star size={14} className="text-yellow-400 fill-current mr-1" />
-                              <span className="text-sm">{prompt.rating}</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {prompt.usage_count || 0}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {format(new Date(prompt.created_at), 'MMM d, yyyy')}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(prompt.prompt_text);
-                              }}
-                              className="p-1 text-gray-400 hover:text-gray-600"
-                            >
-                              <Copy size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleToggleFavorite(prompt.id, !prompt.is_favorite);
-                              }}
-                              className={`p-1 ${prompt.is_favorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
-                            >
-                              <Heart size={14} className={prompt.is_favorite ? 'fill-current' : ''} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
+                    )}
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Prompt
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tool
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rating
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Usage
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredPrompts.map(prompt => (
+                    <TableRow
+                      key={prompt.id}
+                      prompt={prompt}
+                      isSelected={selectedPrompts.includes(prompt.id)}
+                      onSelect={handleSelectPrompt}
+                      onToggleFavorite={handleToggleFavorite}
+                      onCardView={handleCardView}
+                      selectionMode={selectionMode}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        selectedPrompts={selectedPrompts}
+        prompts={filteredPrompts}
+      />
     </div>
   );
+};
+
+// Custom hook for fetching master data (tools and categories)
+const useMasterData = () => {
+  const [data, setData] = useState({ tools: [], categories: [], loading: true });
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [toolsRes, categoriesRes] = await Promise.all([
+          axios.get('http://localhost:5000/api/tools'),
+          axios.get('http://localhost:5000/api/categories'),
+        ]);
+        setData({ 
+          tools: toolsRes.data, 
+          categories: categoriesRes.data, 
+          loading: false 
+        });
+      } catch (error) { 
+        console.error("Failed to fetch filter data", error);
+        setData({ tools: [], categories: [], loading: false });
+      }
+    };
+    fetchData();
+  }, []);
+  
+  return data;
 };
 
 export default LibraryPage;
