@@ -1,7 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom";
 import Layout from "components/Layout";
-import SidebarNavigation from './components/ui/SidebarNavigation';
 import NotFound from "pages/NotFound";
 
 // Correctly importing the component with its new name: CreatePromptPage
@@ -23,25 +22,17 @@ const Routes = () => {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/library" element={<LibraryPage />} />
-          {/* Using the correct component name here */}
-          <Route path="/create" element={<CreatePromptPage />} /> 
+          <Route path="/library/:id" element={<PromptDetailPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/tools" element={<AdminToolsPage />} />
           <Route path="/admin/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/types" element={<AdminTypesPage />} />
           <Route path="/admin/sources" element={<AdminSourcesPage />} />
         </Route>
-        <Route path="/library/:id" element={
-          <div className="flex min-h-screen bg-background">
-            <SidebarNavigation 
-              currentUser={{ name: 'User', role: 'user' }}
-              currentPath="/library"
-            />
-            <div className="flex-1">
-              <PromptDetailPage />
-            </div>
-          </div>
-        } />
+        
+        {/* Create page outside Layout - no header/sidebar */}
+        <Route path="/create" element={<CreatePromptPage />} />
+        
         <Route path="*" element={<NotFound />} />
       </RouterRoutes>
     </BrowserRouter>

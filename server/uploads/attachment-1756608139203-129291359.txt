@@ -1,0 +1,80 @@
+{
+
+  "description": "Photorealistic cinematic shot of a sunlit kitchen nook. A sealed Nutella jar begins to vibrate gently, then bursts open—releasing a rich explosion of swirling chocolate, roasted hazelnuts, toast slices, strawberries, and golden syrup. The ingredients twirl mid-air in gravity-defying slow motion, assembling into a picture-perfect Nutella breakfast platter on a rustic wooden table.",
+
+
+  "style": "photorealistic cinematic",
+
+
+  "camera": "slow orbital shot from low angle upward, transitioning into an overhead top-down reveal",
+
+
+  "lighting": "morning sunlight streaming through soft white curtains, gentle glow on chocolate and fruit highlights",
+
+
+  "room": "cozy breakfast nook with wooden table, beige walls, ceramic mugs, and hanging plants",
+
+
+  "elements": [
+
+    "sealed Nutella jar (center of table)",
+
+    "thick chocolate ribbons swirling through air",
+
+    "flying toasted bread slices with golden crust",
+
+    "hazelnuts spinning and cracking mid-air",
+
+    "sliced bananas and strawberries tumbling gently",
+
+    "honey and syrup droplets catching light",
+
+    "knife spreading Nutella mid-air onto toast",
+
+    "glass of milk and warm coffee cup floating into frame",
+
+    "powdered sugar and cocoa mist drifting like fog"
+
+  ],
+
+
+  "motion": "jar shakes, lid pops and spins off, chocolate erupts upward with roasted hazelnuts orbiting it, toast slices fly in from off-screen, fruit slices rain down and assemble into a breakfast board as camera moves overhead",
+
+
+  "ending": "a beautifully arranged Nutella breakfast board sits steaming on the table, chocolate glistening in the sunlight, with a final hazelnut rolling slowly to a stop near the jar",
+
+
+  "text": "none",
+
+
+  "keywords": [
+
+    "16:9",
+
+    "Nutella explosion",
+
+    "hazelnuts",
+
+    "swirling chocolate",
+
+    "realistic food",
+
+    "breakfast aesthetic",
+
+    "slow motion",
+
+    "natural morning light",
+
+    "high detail",
+
+    "no text",
+
+    "chocolate swirl",
+
+    "toast fly-in",
+
+    "cinematic"
+
+  ]
+
+}
