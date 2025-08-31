@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -177,6 +178,112 @@ router.patch('/:id/view', async (req, res) => {
         console.error(err.message);
         res.status(500).send("Server Error");
     }
+});
+
+// Update a prompt - GENERAL UPDATE
+router.patch('/:id', upload.single('attachment'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      title, prompt_text, output_text, rating, output_status, 
+      tags, credits_used, ai_tool_id, category_id, type_id, 
+      source_id, parent_prompt_id, version, ai_tool_model,
+      deleteAttachment, replaceAttachment
+    } = req.body;
+
+    console.log('Backend received:', req.body);
+    console.log('File received:', req.file ? req.file.filename : 'none');
+
+    let attachment_filename = undefined; // Keep undefined to not update if no change
+
+    // Get current attachment info
+    const current = await pool.query('SELECT attachment_filename FROM prompts WHERE id = $1', [id]);
+    const currentAttachment = current.rows[0]?.attachment_filename;
+
+    // Handle different attachment scenarios
+    if (replaceAttachment === 'true' && req.file) {
+      // Replace: delete old file and use new file
+      if (currentAttachment) {
+        const oldFilePath = path.join(__dirname, '../uploads', currentAttachment);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      attachment_filename = req.file.filename;
+    } else if (deleteAttachment === 'true' && !req.file) {
+      // Just delete: remove old file and set to null
+      if (currentAttachment) {
+        const oldFilePath = path.join(__dirname, '../uploads', currentAttachment);
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+        }
+      }
+      attachment_filename = null;
+    } else if (req.file && !currentAttachment) {
+      // Add new file to prompt that had no attachment
+      attachment_filename = req.file.filename;
+    }
+
+    // Parse tags if it's a JSON string (from FormData)
+    let parsedTags = tags;
+    if (typeof tags === 'string') {
+      try {
+        parsedTags = JSON.parse(tags);
+      } catch (e) {
+        parsedTags = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      }
+    }
+
+    // Build dynamic query based on whether attachment is being updated
+    let query, queryParams;
+    
+    if (attachment_filename !== undefined) {
+      query = `
+        UPDATE prompts SET 
+          title = $1, prompt_text = $2, output_text = $3, rating = $4,
+          output_status = $5, tags = $6, credits_used = $7, ai_tool_id = $8,
+          category_id = $9, type_id = $10, source_id = $11, 
+          parent_prompt_id = $12, version = $13, ai_tool_model = $14,
+          attachment_filename = $15, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $16
+        RETURNING *
+      `;
+      queryParams = [
+        title, prompt_text, output_text, rating, 
+        output_status, parsedTags, credits_used, ai_tool_id,
+        category_id, type_id, source_id, parent_prompt_id,
+        version, ai_tool_model, attachment_filename, id
+      ];
+    } else {
+      query = `
+        UPDATE prompts SET 
+          title = $1, prompt_text = $2, output_text = $3, rating = $4,
+          output_status = $5, tags = $6, credits_used = $7, ai_tool_id = $8,
+          category_id = $9, type_id = $10, source_id = $11, 
+          parent_prompt_id = $12, version = $13, ai_tool_model = $14,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $15
+        RETURNING *
+      `;
+      queryParams = [
+        title, prompt_text, output_text, rating, 
+        output_status, parsedTags, credits_used, ai_tool_id,
+        category_id, type_id, source_id, parent_prompt_id,
+        version, ai_tool_model, id
+      ];
+    }
+    
+    const result = await pool.query(query, queryParams);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating prompt:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
 });
 
 module.exports = router;

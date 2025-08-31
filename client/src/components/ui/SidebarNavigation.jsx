@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { LayoutDashboard, Library, PlusSquare, Settings, Brain, Star, Zap, ChevronDown, User, LogOut } from 'lucide-react';
 
 // Enhanced Logo Component
@@ -57,20 +58,40 @@ const navigationItems = [
 ];
 
 const NavItem = ({ item, isActive, onSetActive }) => {
+    const location = useLocation();
+  
+  // Custom active logic for each route
+  const getIsActive = () => {
+    if (item.path === '/dashboard') {
+      return location.pathname === '/' || location.pathname === '/dashboard';
+    }
+    if (item.path === '/library') {
+      return location.pathname === '/library' || location.pathname.startsWith('/library/');
+    }
+    if (item.path === '/create') {
+      return location.pathname === '/create' || location.pathname.startsWith('/create');
+    }
+    if (item.path === '/admin') {
+      return location.pathname === '/admin' || location.pathname.startsWith('/admin');
+    }
+    return location.pathname === item.path;
+  };
+
+  const isCurrentlyActive = getIsActive();
+
   return (
     <div
       className={`group relative mb-2 transition-all duration-200 ${
-        isActive ? 'scale-105' : 'hover:scale-102'
+        isCurrentlyActive ? 'scale-105' : 'hover:scale-102'
       }`}
     >
       <NavLink
         to={item.path}
         end={item.path === '/dashboard'}
         onClick={() => onSetActive(item.id)}
-        className={({ isActive: linkIsActive }) => {
-          const active = linkIsActive || isActive;
+        className={() => {
           return `w-full flex items-center space-x-3 p-3 rounded-xl transition-all duration-200 ${
-            active
+            isCurrentlyActive
               ? `bg-gradient-to-r ${item.color} text-white shadow-lg`
               : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
           }`;
@@ -83,12 +104,26 @@ const NavItem = ({ item, isActive, onSetActive }) => {
       </NavLink>
       
       {/* Active indicator */}
-      <div className="absolute -right-4 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-500 rounded-l-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div className={`absolute -right-4 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-500 rounded-l-full transition-opacity ${
+        isCurrentlyActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      }`}></div>
     </div>
   );
 };
 
+// In SidebarNavigation component, update the isActive logic
+const isActive = (path) => {
+  if (path === '/dashboard') {
+    return location.pathname === '/' || location.pathname === '/dashboard';
+  }
+  if (path === '/library') {
+    return location.pathname === '/library' || location.pathname.startsWith('/library/');
+  }
+  return location.pathname === path;
+};
+
 const SidebarNavigation = () => {
+  const location = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
