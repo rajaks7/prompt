@@ -23,9 +23,10 @@ router.get('/', async (req, res) => {
     let baseQuery = `
       SELECT
         p.id, p.title, p.prompt_text, p.rating, p.created_at, p.attachment_filename, 
-        p.tags, p.usage_count, p.is_favorite,
-        t.name AS tool_name, t.color_hex AS tool_color, 
-        c.name AS category_name, c.image_url AS category_image_url
+        p.tags, p.usage_count, p.is_favorite, p.output_status, p.version, p.ai_tool_model,
+        t.name AS "toolName", t.color_hex AS "toolColor", 
+        c.name AS "categoryName", c.color_hex AS "categoryColor", c.image_url AS "categoryImageUrl"
+
       FROM prompts p
       LEFT JOIN ai_tools t ON p.ai_tool_id = t.id
       LEFT JOIN categories c ON p.category_id = c.id
@@ -82,6 +83,7 @@ switch(sort) {
     baseQuery += orderBy;
 
     const allPrompts = await pool.query(baseQuery, queryParams);
+    console.log("API GET /prompts result:", allPrompts.rows[0]);
     res.json(allPrompts.rows);
   } catch (err) {
     console.error(err.message);
@@ -96,7 +98,7 @@ router.get('/:id', async (req, res) => {
             SELECT
                 p.*,
                 t.name AS tool_name, t.color_hex AS tool_color,
-                c.name AS category_name,
+                c.name AS category_name, c.color_hex AS category_color,
                 pt.name AS type_name,
                 s.name AS source_name,
                 parent.title as parent_prompt_title
@@ -123,7 +125,7 @@ router.post('/', upload.single('attachment'), async (req, res) => {
   try {
     const {
       title, prompt_text, output_text, type_id, source_id, ai_tool_id,
-      category_id, rating, output_status, tags, credits_used, parent_prompt_id
+      category_id, rating, output_status, tags, credits_used, parent_prompt_id,ai_tool_model
     } = req.body;
     const attachment_filename = req.file ? req.file.filename : null;
     const tagsArray = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
@@ -131,11 +133,11 @@ router.post('/', upload.single('attachment'), async (req, res) => {
     const newPrompt = await pool.query(
       `INSERT INTO prompts (
         title, prompt_text, output_text, type_id, source_id, ai_tool_id, category_id, 
-        rating, output_status, tags, credits_used, attachment_filename, is_favorite, parent_prompt_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+        rating, output_status, tags, credits_used, attachment_filename, is_favorite, parent_prompt_id, ai_tool_model
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
       [
         title, prompt_text, output_text, type_id, source_id || null, ai_tool_id, category_id,
-        rating, output_status, tagsArray, credits_used || null, attachment_filename, false, parent_prompt_id || null
+        rating, output_status, tagsArray, credits_used || null, attachment_filename, false, parent_prompt_id || null, ai_tool_model
       ]
     );
     res.status(201).json(newPrompt.rows[0]);
@@ -285,5 +287,71 @@ router.patch('/:id', upload.single('attachment'), async (req, res) => {
     res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
+
+// DELETE a prompt
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // First, check if prompt exists
+    const prompt = await pool.query('SELECT attachment_filename FROM prompts WHERE id = $1', [id]);
+    if (prompt.rows.length === 0) {
+      return res.status(404).json({ error: 'Prompt not found' });
+    }
+
+    // If it has an attachment, remove file from uploads
+    const attachment = prompt.rows[0].attachment_filename;
+    if (attachment) {
+      const filePath = path.join(__dirname, '../uploads', attachment);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // Delete from DB
+    await pool.query('DELETE FROM prompts WHERE id = $1', [id]);
+
+    res.json({ message: 'Prompt deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting prompt:', err);
+    res.status(500).json({ error: 'Failed to delete prompt' });
+  }
+});
+
+// BULK DELETE prompts
+router.post('/bulk-delete', async (req, res) => {
+  try {
+    console.log("Bulk delete received:", req.body);  // ✅ debug log
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No IDs provided' });
+    }
+
+    // Get attachment filenames for deletion
+    const result = await pool.query(
+      'SELECT attachment_filename FROM prompts WHERE id = ANY($1)',
+      [ids]
+    );
+
+    result.rows.forEach(row => {
+      if (row.attachment_filename) {
+        const filePath = path.join(__dirname, '../uploads', row.attachment_filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    });
+
+    await pool.query('DELETE FROM prompts WHERE id = ANY($1)', [ids]);
+
+    res.json({ message: 'Prompts deleted successfully', deleted: ids });
+  } catch (err) {
+    console.error('Error bulk deleting prompts:', err);
+    res.status(500).json({ error: 'Failed to bulk delete prompts' });
+  }
+});
+
+
 
 module.exports = router;

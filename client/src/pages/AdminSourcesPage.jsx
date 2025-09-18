@@ -1,66 +1,164 @@
-// client/src/pages/AdminSourcesPage.jsx
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link } from 'react-router-dom';
-
-const API_URL = 'http://localhost:5000/api/sources';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { Pencil, Trash2, Save, X, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const AdminSourcesPage = () => {
+  const navigate = useNavigate();
   const [sources, setSources] = useState([]);
-  const [newName, setNewName] = useState('');
-  const [error, setError] = useState('');
+  const [newSource, setNewSource] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
 
-  const fetchData = async () => {
+  const fetchSources = async () => {
     try {
-      const response = await axios.get(API_URL);
-      setSources(response.data);
-    } catch (err) { setError('Failed to fetch sources.'); }
+      const res = await axios.get("http://localhost:5000/api/sources");
+      setSources(res.data);
+    } catch (err) {
+      console.error("Failed to fetch sources:", err);
+    }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchSources();
+  }, []);
 
-  const handleAdd = async (e) => {
-    e.preventDefault();
+  const handleAdd = async () => {
+    if (!newSource.trim()) return;
     try {
-      await axios.post(API_URL, { name: newName });
-      setNewName('');
-      fetchData();
-    } catch (err) { setError('Failed to add source. Does it already exist?'); }
+      await axios.post("http://localhost:5000/api/sources", { name: newSource });
+      setNewSource("");
+      fetchSources();
+    } catch (err) {
+      console.error("Failed to add source:", err);
+    }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure?')) {
-      try {
-        await axios.delete(`${API_URL}/${id}`);
-        fetchData();
-      } catch (err) { setError('Failed to delete source.'); }
+    try {
+      await axios.delete(`http://localhost:5000/api/sources/${id}`);
+      fetchSources();
+    } catch (err) {
+      console.error("Failed to delete source:", err);
+    }
+  };
+
+  const handleEditSave = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/sources/${id}`, { name: editName });
+      setEditingId(null);
+      fetchSources();
+    } catch (err) {
+      console.error("Failed to update source:", err);
     }
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="mb-6"><Link to="/admin" className="text-blue-600 hover:underline">&larr; Back to Admin Dashboard</Link></div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin - Manage Source Names</h1>
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8 max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Add New Source</h2>
-        <form onSubmit={handleAdd} className="flex space-x-4">
-          <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., Industry Blog" className="flex-grow p-2 border border-gray-300 rounded-md"/>
-          <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">Add</button>
-        </form>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">Existing Sources</h2>
-        <ul className="space-y-3">
-          {sources.map((source) => (
-            <li key={source.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md">
-              <span>{source.name}</span>
-              <button onClick={() => handleDelete(source.id)} className="text-red-500 hover:text-red-700">Delete</button>
-            </li>
-          ))}
-        </ul>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6"
+        >
+          <ArrowLeft size={18} />
+          Back to Admin Dashboard
+        </button>
+
+        <h1 className="text-2xl font-bold mb-6">Admin – Prompt Sources</h1>
+
+        {/* Add New Source */}
+        <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-3 mb-6">
+          <input
+            type="text"
+            placeholder="Source name"
+            value={newSource}
+            onChange={(e) => setNewSource(e.target.value)}
+            className="flex-1 border px-3 py-2 rounded-lg"
+          />
+          <button
+            onClick={handleAdd}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Sources List */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100 text-left text-sm">
+              <tr>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2 w-32">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sources.map((s) => (
+                <tr key={s.id} className="border-t">
+                  <td className="px-4 py-2">
+                    {editingId === s.id ? (
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="border px-2 py-1 rounded w-full"
+                      />
+                    ) : (
+                      s.name
+                    )}
+                  </td>
+                  <td className="px-4 py-2 flex gap-2">
+                    {editingId === s.id ? (
+                      <>
+                        <button
+                          onClick={() => handleEditSave(s.id)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <Save size={18} />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <X size={18} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingId(s.id);
+                            setEditName(s.name);
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {sources.length === 0 && (
+                <tr>
+                  <td colSpan="2" className="text-center py-4 text-gray-500">
+                    No sources found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 };
+
 export default AdminSourcesPage;

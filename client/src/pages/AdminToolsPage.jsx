@@ -1,95 +1,200 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link } from 'react-router-dom';
-
-const API_URL = 'http://localhost:5000/api/tools';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { Pencil, Trash2, Save, X, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const AdminToolsPage = () => {
+  const navigate = useNavigate();
   const [tools, setTools] = useState([]);
-  const [editingTool, setEditingTool] = useState(null);
-  const [formState, setFormState] = useState({ name: '', color_hex: '#6B7280' });
-  const [error, setError] = useState('');
+  const [newTool, setNewTool] = useState("");
+  const [newColor, setNewColor] = useState("#3B82F6");
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({ name: "", color_hex: "" });
 
-  const fetchData = async () => {
+  const fetchTools = async () => {
     try {
-      const response = await axios.get(API_URL);
-      setTools(response.data);
-    } catch (err) { setError('Failed to fetch AI tools.'); }
+      const res = await axios.get("http://localhost:5000/api/tools");
+      setTools(res.data);
+    } catch (err) {
+      console.error("Failed to fetch tools:", err);
+    }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchTools();
+  }, []);
 
-  const handleInputChange = (e) => {
-    setFormState({ ...formState, [e.target.name]: e.target.value });
-  };
-
-  const handleEditClick = (tool) => {
-    setEditingTool(tool);
-    setFormState({ name: tool.name, color_hex: tool.color_hex });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingTool(null);
-    setFormState({ name: '', color_hex: '#6B7280' });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleAdd = async () => {
+    if (!newTool.trim()) return;
     try {
-      if (editingTool) {
-        await axios.put(`${API_URL}/${editingTool.id}`, formState);
-      } else {
-        await axios.post(API_URL, formState);
-      }
-      handleCancelEdit();
-      fetchData();
-    } catch (err) { setError('Operation failed. Does the name already exist?'); }
+      await axios.post("http://localhost:5000/api/tools", {
+        name: newTool,
+        color_hex: newColor,
+      });
+      setNewTool("");
+      setNewColor("#3B82F6");
+      fetchTools();
+    } catch (err) {
+      console.error("Failed to add tool:", err);
+    }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure?')) {
-      try {
-        await axios.delete(`${API_URL}/${id}`);
-        fetchData();
-      } catch (err) { setError('Failed to delete tool.'); }
+    try {
+      await axios.delete(`http://localhost:5000/api/tools/${id}`);
+      fetchTools();
+    } catch (err) {
+      console.error("Failed to delete tool:", err);
+    }
+  };
+
+  const handleEditSave = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/tools/${id}`, editData);
+      setEditingId(null);
+      fetchTools();
+    } catch (err) {
+      console.error("Failed to update tool:", err);
     }
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="mb-6"><Link to="/admin" className="text-blue-600 hover:underline">&larr; Back to Admin Dashboard</Link></div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin - Manage AI Tools</h1>
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8 max-w-md">
-        <h2 className="text-xl font-semibold mb-4">{editingTool ? 'Edit Tool' : 'Add New Tool'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="name" value={formState.name} onChange={handleInputChange} placeholder="e.g., ChatGPT" className="w-full p-2 border border-gray-300 rounded-md"/>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
-            <input type="color" name="color_hex" value={formState.color_hex} onChange={handleInputChange} className="w-full h-10 p-1 border border-gray-300 rounded-md"/>
-          </div>
-          <div className="flex space-x-2">
-            <button type="submit" className="w-full bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">{editingTool ? 'Update' : 'Add'}</button>
-            {editingTool && <button type="button" onClick={handleCancelEdit} className="w-full bg-gray-200 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-300">Cancel</button>}
-          </div>
-        </form>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">Existing Tools</h2>
-        <ul className="space-y-3">
-          {tools.map((tool) => (
-            <li key={tool.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md">
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 rounded-md" style={{ backgroundColor: tool.color_hex }}></div>
-                <span>{tool.name}</span>
-              </div>
-              <div className="space-x-2">
-                <button onClick={() => handleEditClick(tool)} className="text-blue-500 hover:text-blue-700 font-semibold">Edit</button>
-                <button onClick={() => handleDelete(tool.id)} className="text-red-500 hover:text-red-700 font-semibold">Delete</button>
-              </div>
-            </li>
-          ))}
-        </ul>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6"
+        >
+          <ArrowLeft size={18} />
+          Back to Admin Dashboard
+        </button>
+
+        <h1 className="text-2xl font-bold mb-6">Admin – AI Tools</h1>
+
+        {/* Add New Tool */}
+        <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-3 mb-6">
+          <input
+            type="text"
+            placeholder="New tool name"
+            value={newTool}
+            onChange={(e) => setNewTool(e.target.value)}
+            className="flex-1 border px-3 py-2 rounded-lg"
+          />
+          <input
+            type="color"
+            value={newColor}
+            onChange={(e) => setNewColor(e.target.value)}
+            className="w-12 h-10 rounded"
+          />
+          <button
+            onClick={handleAdd}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Tools List */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100 text-left text-sm">
+              <tr>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Color</th>
+                <th className="px-4 py-2 w-32">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tools.map((tool) => (
+                <tr key={tool.id} className="border-t">
+                  <td className="px-4 py-2">
+                    {editingId === tool.id ? (
+                      <input
+                        type="text"
+                        value={editData.name}
+                        onChange={(e) =>
+                          setEditData({ ...editData, name: e.target.value })
+                        }
+                        className="border px-2 py-1 rounded w-full"
+                      />
+                    ) : (
+                      tool.name
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    {editingId === tool.id ? (
+                      <input
+                        type="color"
+                        value={editData.color_hex}
+                        onChange={(e) =>
+                          setEditData({ ...editData, color_hex: e.target.value })
+                        }
+                        className="w-12 h-8 rounded"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-5 h-5 rounded"
+                          style={{ backgroundColor: tool.color_hex }}
+                        />
+                        <span className="text-sm text-gray-600">
+                          {tool.color_hex}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 flex gap-2">
+                    {editingId === tool.id ? (
+                      <>
+                        <button
+                          onClick={() => handleEditSave(tool.id)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <Save size={18} />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <X size={18} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingId(tool.id);
+                            setEditData({
+                              name: tool.name,
+                              color_hex: tool.color_hex || "#3B82F6",
+                            });
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(tool.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {tools.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="text-center py-4 text-gray-500">
+                    No tools found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

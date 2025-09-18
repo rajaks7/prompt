@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Star, Upload, X, Eye, Wand2, Sparkles, FileText, Tag, Link, Search } from 'lucide-react';
+import SidebarNavigation from "../../components/ui/SidebarNavigation";
 
 // useMasterData hook - defined locally
 const useMasterData = () => {
@@ -58,32 +59,31 @@ const Icon = ({ name, size = 24, className = "" }) => {
 
 // AI Tool Tag Button
 const AIToolButton = ({ tool, selected, onClick }) => {
-  const buttonStyle = selected 
+  const baseColor = tool.color_hex || '#3B82F6';
+
+  const buttonStyle = selected
     ? {
-        backgroundColor: tool.color_hex || '#3B82F6',
+        backgroundColor: baseColor,
         color: 'white',
-        boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.15)'
+        boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.15)',
       }
     : {
-        backgroundColor: '#F3F4F6',
-        color: '#374151'
+        backgroundColor: '#F3F4F6', // plain grey background
+        color: '#374151',          // grey text
       };
-  
+
   return (
     <button
       type="button"
       onClick={() => onClick(tool.id)}
       style={buttonStyle}
-      className={`
-        px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105
-        ${!selected ? 'hover:bg-gray-200' : ''}
-      `}
+      className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105"
     >
       {tool.name}
     </button>
   );
 };
-
+  
 // Generate consistent colors for categories (using 6-char hex codes)
 const getCategoryColor = (categoryName) => {
   const colors = [
@@ -99,34 +99,30 @@ const getCategoryColor = (categoryName) => {
 // Category Button  
 const CategoryButton = ({ category, selected, onClick }) => {
   const categoryColor = category.color_hex || getCategoryColor(category.name);
-  
-  const buttonStyle = selected 
+
+  const buttonStyle = selected
     ? {
         backgroundColor: categoryColor,
         color: 'white',
         boxShadow: '0 4px 14px 0 rgba(0, 0, 0, 0.15)',
-        transform: 'scale(1.05)'
+        transform: 'scale(1.05)',
       }
     : {
         backgroundColor: '#F9FAFB',
         color: '#374151',
-        border: '1px solid #E5E7EB'
+        border: '1px solid #E5E7EB',
       };
-  
+
   return (
     <button
       type="button"
       onClick={() => onClick(category.id)}
       style={buttonStyle}
-      className={`
-        flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200
-        ${!selected ? 'hover:bg-gray-100' : ''}
-      `}
+      className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
     >
-      {category.image_url ? (
-        <img src={category.image_url} alt={category.name} className="w-5 h-5 rounded" />
-      ) : (
-        <div 
+      {(
+        // 🔹 Small square always uses DB color
+        <div
           className="w-5 h-5 rounded"
           style={{ backgroundColor: categoryColor }}
         />
@@ -420,7 +416,12 @@ const CreatePromptPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <SidebarNavigation />
+
+      {/* Main Content */}
+      <div className="flex-1 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Page Header */}
         <div className="text-center mb-8">
@@ -596,20 +597,28 @@ const CreatePromptPage = () => {
                 />
               </div>
               
-              {/* Source - Only if type is "Sourced" */}
-              {showSourceField && (
+              {/* Source - Dropdown (always visible, disabled unless type = Sourced) */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Source
-                  </label>
-                  <RadioGroup
-                    options={sources}
+                </label>
+                <select
                     value={formData.source_id}
-                    onChange={(value) => handleChange('source_id', value)}
-                    name="source"
-                  />
+                    onChange={(e) => handleChange('source_id', e.target.value)}
+                    disabled={!showSourceField} // disable unless type = Sourced
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                    !showSourceField ? "bg-gray-100 cursor-not-allowed" : ""
+                    }`}
+                >
+                    <option value="">-- Select Source --</option>
+                    {sources.map((src) => (
+                    <option key={src.id} value={src.id}>
+                        {src.name}
+                    </option>
+                    ))}
+                </select>
                 </div>
-              )}
+              
               
               {/* Version */}
               <div>
@@ -744,6 +753,7 @@ const CreatePromptPage = () => {
         </form>
       </div>
     </div>
+  </div>
   );
 };
 

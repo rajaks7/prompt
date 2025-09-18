@@ -148,16 +148,13 @@ const PromptDetailPage = () => {
           }
         });
         
-        // Handle both delete and new file
-        if (editedPrompt.deleteAttachment && editedPrompt.newAttachment) {
-          // Replace: delete old and add new
+        // Add file if new attachment
+        if (editedPrompt.newAttachment) {
           formData.append('attachment', editedPrompt.newAttachment);
-          formData.append('replaceAttachment', 'true');
-        } else if (editedPrompt.newAttachment) {
-          // Just add new file
-          formData.append('attachment', editedPrompt.newAttachment);
-        } else if (editedPrompt.deleteAttachment) {
-          // Just delete
+        }
+        
+        // Add delete flag if deleting
+        if (editedPrompt.deleteAttachment) {
           formData.append('deleteAttachment', 'true');
         }
 
@@ -255,27 +252,43 @@ const PromptDetailPage = () => {
 
   // Handle share
   const handleShare = (platform) => {
-    const text = `Check out this prompt: ${prompt.title}
+  if (!prompt) return;
 
-AI Tool: ${prompt.tool_name || 'Not specified'}
-Category: ${prompt.category_name || 'Not specified'}
+  const tool = prompt.tool_name || prompt.toolName || "Not specified";
+  const model = prompt.ai_tool_model || "Not specified";
+  const category = prompt.category_name || prompt.categoryName || "Not specified";
+  const outputStatus = prompt.output_status || "Not specified";
 
-Prompt:
-${prompt.prompt_text}`;
-    
-    const url = window.location.href;
-    
-    switch (platform) {
-      case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodeURIComponent(text + '\n\n' + url)}`);
-        break;
-      case 'email':
-        window.open(`mailto:?subject=${encodeURIComponent(prompt.title)}&body=${encodeURIComponent(text + '\n\n' + url)}`);
-        break;
-      default:
-        handleCopy(text + '\n\n' + url);
-    }
-  };
+  const details = 
+    `Title: ${prompt.title}\n` +
+    `Tool: ${tool}\n` +
+    `Model: ${model}\n` +
+    `Category: ${category}\n` +
+    `Output Status: ${outputStatus}\n\n` +
+    `Content:\n${prompt.prompt_text}\n\n` +
+    `Rating: ${prompt.rating || "N/A"}/5\n` +
+    `Usage: ${prompt.usage_count || 0} times\n` +
+    `Created: ${new Date(prompt.created_at).toLocaleDateString()}`;
+
+  switch (platform) {
+    case 'whatsapp':
+      // ✅ no link, just details
+      window.open(`https://wa.me/?text=${encodeURIComponent(details)}`, '_blank');
+      break;
+
+    case 'email':
+      // ✅ safer to use location.href
+      const subject = encodeURIComponent(`Prompt Share: ${prompt.title}`);
+      const safeBody = encodeURIComponent(details).replace(/%0A/g, '%0D%0A');
+      window.location.href = `mailto:?subject=${subject}&body=${safeBody}`;
+      break;
+
+    default:
+      // ✅ copy to clipboard
+      handleCopy(details);
+  }
+};
+
 
   // Utility functions
   const formatDate = (dateString) => {
@@ -455,7 +468,7 @@ ${prompt.prompt_text}`;
         </div>
 
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div id="print-area" className="lg:col-span-2 space-y-6">
           {/* Title and Metadata */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-6">
@@ -511,13 +524,13 @@ ${prompt.prompt_text}`;
                 {prompt.output_status && (
                   <div className="flex items-center space-x-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      prompt.output_status === 'successful' ? 'bg-green-100 text-green-700' :
-                      prompt.output_status === 'so-so' ? 'bg-yellow-100 text-yellow-700' :
-                      prompt.output_status === 'failed' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {prompt.output_status}
-                    </span>
+                    prompt.output_status?.toLowerCase() === 'successful' ? 'bg-green-100 text-green-700' :
+                    prompt.output_status?.toLowerCase() === 'so-so' ? 'bg-yellow-100 text-yellow-700' :
+                    prompt.output_status?.toLowerCase() === 'failure' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {prompt.output_status}
+                  </span>
                   </div>
                 )}
               </div>
@@ -536,7 +549,7 @@ ${prompt.prompt_text}`;
                 {prompt.category_name && (
                   <span
                     className="px-3 py-1.5 rounded-full text-white text-sm font-medium"
-                    style={{ backgroundColor: getCategoryColor(prompt.category_name) }}
+                    style={{ backgroundColor: prompt.category_color || '#3B82F6' }}
                   >
                     {prompt.category_name}
                   </span>
@@ -754,9 +767,9 @@ ${prompt.prompt_text}`;
                       className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">No status</option>
-                      <option value="successful">Successful</option>
-                      <option value="so-so">So-so</option>
-                      <option value="failed">Failed</option>
+                      <option value="Successful">Successful</option>
+                      <option value="So-So">So-So</option>
+                      <option value="Failure">Failure</option>
                     </select>
                   </div>
 
@@ -781,18 +794,6 @@ ${prompt.prompt_text}`;
                       onChange={(e) => setEditedPrompt(prev => ({ ...prev, ai_tool_model: e.target.value }))}
                       className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="gpt-4, claude-3, etc."
-                    />
-                  </div>
-
-                  {/* Credits Used */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Credits Used</label>
-                    <input
-                      type="number"
-                      value={editedPrompt.credits_used || ''}
-                      onChange={(e) => setEditedPrompt(prev => ({ ...prev, credits_used: parseInt(e.target.value) || null }))}
-                      className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="0"
                     />
                   </div>
 
@@ -1036,28 +1037,41 @@ ${prompt.prompt_text}`;
             <h3 className="font-semibold text-gray-900 mb-3">Quick Stats</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Views</span>
-                <span className="font-medium">{prompt.usage_count || 0}</span>
-              </div>
-              
+              <span className="text-gray-600">Word Count</span>
+              <span className="font-medium text-blue-600">
+                {prompt.prompt_text ? (prompt.prompt_text.match(/\b\w+\b/g) || []).length : 0}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Character Count</span>
+              <span className="font-medium text-purple-600">
+                {prompt.prompt_text ? prompt.prompt_text.length : 0}
+              </span>
+            </div>
+
+            {/* Credits Used */}
+            {prompt.credits_used !== null && prompt.credits_used !== undefined && (
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Created</span>
-                <span className="font-medium">{formatDate(prompt.created_at)}</span>
+                <span className="text-gray-600">Credits Used</span>
+                <span className="font-medium text-green-600">
+                  {prompt.credits_used}
+                </span>
+              </div>
+            )}
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Created</span>
+                <span className="text-gray-500">{formatDate(prompt.created_at)}</span>
               </div>
               
               {prompt.updated_at !== prompt.created_at && (
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Updated</span>
-                  <span className="font-medium">{formatDate(prompt.updated_at)}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Updated</span>
+                <span className="text-gray-500">{formatDate(prompt.updated_at)}</span>
+              </div>
+            )}
               
-              {prompt.credits_used && (
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Credits Used</span>
-                  <span className="font-medium">{prompt.credits_used}</span>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1131,8 +1145,74 @@ ${prompt.prompt_text}`;
           </div>
         </div>
       )}
+      <style>
+  {`
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #print-area, #print-area * {
+        visibility: visible !important;
+      }
+      #print-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin: 0;
+        padding: 30px;
+        font-size: 14px;
+        line-height: 1.6;
+        background: white !important;
+        color: black !important;
+      }
+
+      #print-area h1 {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      #print-area .metadata {
+        font-size: 12px;
+        color: #444;
+        margin-bottom: 20px;
+      }
+
+      #print-area h2 {
+        font-size: 18px;
+        margin-top: 24px;
+        margin-bottom: 10px;
+        font-weight: bold;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 4px;
+        page-break-before: always;
+      }
+
+      #print-area pre {
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        margin-bottom: 12px;
+      }
+
+      #print-area .tag {
+        display: inline-block;
+        margin: 2px 6px 2px 0;
+        padding: 2px 6px;
+        font-size: 12px;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        background: none !important;
+        color: #000 !important;
+      }
+    }
+  `}
+</style>
+
     </div>
   );
 };
+
 
 export default PromptDetailPage;

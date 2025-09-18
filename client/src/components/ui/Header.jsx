@@ -291,50 +291,7 @@ const Header = ({ user, onLogin, onLogout }) => {
               {getWelcomeMessage()} Ready to create something amazing?
             </p>
           </div>
-
-          {/* Simple User Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              className="flex items-center space-x-3 p-3 hover:bg-gray-100 rounded-lg transition-colors duration-200 border border-gray-200"
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${user.avatar || 'bg-purple-500'}`}>
-                {user.name.charAt(0)}
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
-              </div>
-              <ChevronDown size={16} className="text-gray-500" />
-            </button>
-
-            {/* Simple Dropdown */}
-            {isUserMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold ${user.avatar || 'bg-purple-500'}`}>
-                      {user.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{user.name}</p>
-                      <p className="text-xs text-blue-600 capitalize">{user.role}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="py-2">
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center space-x-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <LogOut size={16} />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
       </div>
     </header>
   );

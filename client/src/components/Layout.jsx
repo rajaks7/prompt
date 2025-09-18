@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';   // ⬅ added useLocation
 import SidebarNavigation from 'components/ui/SidebarNavigation';
 import Header from 'components/ui/Header';
 import { Menu, X } from 'lucide-react';
@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 const Layout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const location = useLocation();   // ⬅ get current route
 
   // Check for saved user on component mount
   useEffect(() => {
@@ -93,12 +94,14 @@ const Layout = () => {
           </div>
         )}
 
-        {/* Header - always show */}
-        <Header 
-          user={currentUser}
-          onLogin={handleLogin}
-          onLogout={handleLogout}
-        />
+        {/* Header - only show on Dashboard */}
+        {location.pathname === '/dashboard' && (
+          <Header 
+            user={currentUser}
+            onLogin={handleLogin}
+            onLogout={handleLogout}
+          />
+        )}
 
         {/* Main Content - only show if logged in */}
         <div className="flex-1 overflow-y-auto">

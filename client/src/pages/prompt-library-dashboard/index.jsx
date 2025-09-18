@@ -9,7 +9,7 @@ const HideOriginalHeader = () => {
   React.useEffect(() => {
     const findAndHideHeaders = () => {
       console.log('=== DEBUGGING HEADERS ===');
-      
+
       // Find all headers
       const allHeaders = document.querySelectorAll('header');
       console.log('Found headers:', allHeaders.length);
@@ -156,18 +156,38 @@ const PromptCard = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionM
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [imageError, setImageError] = useState(false);
-  
+
+  // destructure common fields
   const {
-    id, title, prompt_text, tool_name, tool_color, category_name, category_image_url,
-    rating, usage_count, is_favorite, attachment_filename, created_at, tags
+    id, title, prompt_text, rating, usage_count, is_favorite,
+    attachment_filename, created_at, tags, output_status,
+    ai_tool_model, version
   } = prompt;
 
-  // Determine image to display (attachment first, then category image, then default)
-  const displayImage = !imageError && (attachment_filename || category_image_url) 
-    ? (attachment_filename 
-        ? `http://localhost:5000/uploads/${attachment_filename}` 
-        : category_image_url)
-    : null;
+  // handle both snake_case and camelCase
+  const categoryImageUrl = prompt.categoryImageUrl || prompt.category_image_url || null;
+  const categoryName = prompt.categoryName || prompt.category_name || "Uncategorized";
+  const toolName = prompt.toolName || prompt.tool_name || "No Tool";
+  const toolColor = prompt.toolColor || prompt.tool_color || "#6B7280";
+
+  const status = output_status ? output_status.trim().toLowerCase() : "";
+
+  // ✅ helper to check if file is an image
+  const isImageFile = (filename) => {
+    if (!filename) return false;
+    const ext = filename.split(".").pop().toLowerCase();
+    return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+  };
+
+  // ✅ strict priority: image attachment → category image → placeholder
+  let displayImage = null;
+  if (!imageError) {
+    if (attachment_filename && isImageFile(attachment_filename)) {
+      displayImage = `http://localhost:5000/uploads/${attachment_filename}`;
+    } else if (categoryImageUrl) {
+      displayImage = `http://localhost:5000${categoryImageUrl}`;
+    }
+  }
 
   const handleCardClick = () => {
     if (!selectionMode) {
@@ -179,7 +199,6 @@ const PromptCard = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionM
   const handleCopy = (e) => {
     e.stopPropagation();
     navigator.clipboard.writeText(prompt_text);
-    // You could add a toast notification here
   };
 
   const handleFavorite = (e) => {
@@ -187,102 +206,72 @@ const PromptCard = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionM
     onToggleFavorite(id, !is_favorite);
   };
 
-  const handleShare = (e) => {
-    e.stopPropagation();
-    // Share functionality - could open a modal with sharing options
-  };
-
-  // Create excerpt (2 lines max)
-  const excerpt = prompt_text?.length > 120 
-    ? prompt_text.substring(0, 120) + '...' 
-    : prompt_text || '';
+  const excerpt =
+    prompt_text?.length > 120
+      ? prompt_text.substring(0, 120) + "..."
+      : prompt_text || "";
 
   return (
-    <div 
+    <div
       className={`bg-white rounded-xl border-2 transition-all duration-300 cursor-pointer group relative ${
-        isSelected ? 'border-blue-500 shadow-xl' : 'border-gray-100 hover:border-gray-200'
-      } ${isHovered ? 'shadow-xl transform -translate-y-2' : 'shadow-md'} max-w-sm w-full`}
+        isSelected ? "border-blue-500 shadow-xl" : "border-gray-100 hover:border-gray-200"
+      } ${isHovered ? "shadow-xl transform -translate-y-2" : "shadow-md"} max-w-sm w-full`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
     >
-      {/* Selection Checkbox */}
       {selectionMode && (
-        <div className="absolute top-3 left-3 z-10">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={(e) => {
-              e.stopPropagation();
-              onSelect(id);
-            }}
-            className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
-          />
-        </div>
-      )}
-
+      <div className="absolute top-2 left-2 z-10">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={(e) => {
+            e.stopPropagation();
+            onSelect(id);
+          }}
+          className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500"
+        />
+      </div>
+    )}
       {/* Image Section */}
-      <div className="relative h-36 rounded-t-xl overflow-hidden bg-gray-100">
+      <div className="relative h-48 rounded-t-xl overflow-hidden bg-gray-100">
         {displayImage ? (
-          <img 
-            src={displayImage} 
+          <img
+            src={displayImage}
             alt={title}
             className="w-full h-full object-cover"
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-            <div className="text-center">
-              <div 
-                className="w-12 h-12 rounded-full flex items-center justify-center mb-2 mx-auto"
-                style={{ backgroundColor: getCategoryColor(category_name) + '20' }}
-              >
-                <Tag size={24} style={{ color: getCategoryColor(category_name) }} />
-              </div>
-              <span className="text-xs text-gray-500 font-medium">{category_name || 'Uncategorized'}</span>
-            </div>
+            <Tag size={24} className="text-gray-400" />
+            <span className="text-xs text-gray-500 ml-2">No Image</span>
           </div>
         )}
-        
-        {/* Quick Actions Overlay */}
-        <div className={`absolute top-2 right-2 flex gap-1 transition-opacity duration-200 ${
-          isHovered ? 'opacity-100' : 'opacity-0'
-        }`}>
-          <button
-            onClick={handleFavorite}
-            className={`p-1.5 rounded-full backdrop-blur-sm transition-colors ${
-              is_favorite 
-                ? 'bg-red-500 text-white' 
-                : 'bg-white/80 text-gray-600 hover:text-red-500'
-            }`}
-          >
-            <Heart size={14} className={is_favorite ? 'fill-current' : ''} />
-          </button>
-          <button
-            onClick={handleCopy}
-            className="p-1.5 rounded-full bg-white/80 text-gray-600 hover:text-blue-500 backdrop-blur-sm transition-colors"
-          >
-            <Copy size={14} />
-          </button>
-          <button
-            onClick={handleShare}
-            className="p-1.5 rounded-full bg-white/80 text-gray-600 hover:text-green-500 backdrop-blur-sm transition-colors"
-          >
-            <Share size={14} />
-          </button>
-        </div>
       </div>
 
       {/* Content Section */}
       <div className="p-3 space-y-2">
-        {/* Tool Tag & Usage Count */}
+        {/* Tool + Model + Version */}
         <div className="flex items-center justify-between">
-          <span 
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
-            style={{ backgroundColor: tool_color || '#6B7280' }}
-          >
-            {tool_name || 'No Tool'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+              style={{ backgroundColor: toolColor }}
+            >
+              {toolName}
+            </span>
+            {ai_tool_model && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                {ai_tool_model}
+              </span>
+            )}
+            {version && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                v{version}
+              </span>
+            )}
+          </div>
           <div className="flex items-center text-xs text-gray-500">
             <Eye size={12} className="mr-1" />
             {usage_count || 0}
@@ -295,59 +284,77 @@ const PromptCard = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionM
         </h3>
 
         {/* Excerpt */}
-        <p className="text-xs text-gray-600 line-clamp-2 h-8 mb-2">
-          {excerpt}
-        </p>
+        <p className="text-xs text-gray-600 line-clamp-2 h-8 mb-2">{excerpt}</p>
 
-        {/* Category & Tags - Different placement */}
-        <div className="space-y-1.5">
-          {/* Category */}
-          <div className="flex">
-            <span 
-              className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
-              style={{ backgroundColor: getCategoryColor(category_name) }}
-            >
-              {category_name || 'Uncategorized'}
-            </span>
-          </div>
-          
-          {/* Tags */}
-          {tags && tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {tags.slice(0, 3).map((tag, index) => (
-                <span key={index} className="px-1.5 py-0.5 bg-gray-200 text-gray-700 text-xs rounded">
-                  {tag}
-                </span>
-              ))}
-              {tags.length > 3 && (
-                <span className="px-1.5 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
-                  +{tags.length - 3}
-                </span>
-              )}
-            </div>
-          )}
+        {/* Category */}
+        <div className="flex">
+          <span
+            className="px-2 py-0.5 rounded-full text-xs font-medium text-white"
+            style={{ backgroundColor: prompt.categoryColor || "#6B7280" }}
+          >
+            {categoryName}
+          </span>
         </div>
+
+        {/* Tags */}
+        {tags && tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {tags.map((tag, idx) => (
+              <span
+                key={idx}
+                className="px-2 py-1 rounded-md bg-gray-200 text-gray-700 text-xs font-medium"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs text-gray-500 pt-1.5 border-t border-gray-100">
-          <div className="flex items-center">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star 
-                key={star} 
-                size={10} 
-                className={star <= Math.round(rating || 0) 
-                  ? 'text-yellow-400 fill-current' 
-                  : 'text-gray-300'
-                } 
-              />
-            ))}
-            <span className="ml-1">({rating?.toFixed(1) || '0.0'})</span>
-          </div>
-          <div className="flex items-center">
-            <Calendar size={10} className="mr-1" />
-            {formatDate(created_at)}
-          </div>
+        {/* Left: Rating */}
+        <div className="flex items-center">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Star
+              key={star}
+              size={10}
+              className={
+                star <= Math.round(rating || 0)
+                  ? "text-yellow-400 fill-current"
+                  : "text-gray-300"
+              }
+            />
+          ))}
+          <span className="ml-1">({rating?.toFixed(1) || "0.0"})</span>
         </div>
+
+        {/* Middle: Output Status */}
+        {output_status && (
+          <div className="flex justify-center flex-1">
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-medium
+                ${
+                  status === "successful"
+                    ? "bg-green-100 text-green-700"
+                    : status === "so-so"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : status === "failure"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+            >
+              {output_status}
+            </span>
+          </div>
+        )}
+
+        {/* Right: Date */}
+        <div className="flex items-center">
+          <Calendar size={10} className="mr-1" />
+          {formatDate(created_at)}
+        </div>
+      </div>
+
       </div>
     </div>
   );
@@ -356,17 +363,38 @@ const PromptCard = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionM
 const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMode, onCardView }) => {
   const navigate = useNavigate();
   const [imageError, setImageError] = useState(false);
-  
+
+  // destructure consistent fields
   const {
-    id, title, prompt_text, tool_name, tool_color, category_name,
-    rating, usage_count, is_favorite, attachment_filename, category_image_url, created_at
+    id, title, prompt_text, rating, usage_count, is_favorite,
+    attachment_filename, created_at, output_status,
+    ai_tool_model, version
   } = prompt;
 
-  const displayImage = !imageError && (attachment_filename || category_image_url) 
-    ? (attachment_filename 
-        ? `http://localhost:5000/uploads/${attachment_filename}` 
-        : category_image_url)
-    : null;
+  // handle both snake_case and camelCase API fields
+  const categoryImageUrl = prompt.categoryImageUrl || prompt.category_image_url || null;
+  const categoryName = prompt.categoryName || prompt.category_name || "Uncategorized";
+  const toolName = prompt.toolName || prompt.tool_name || "No Tool";
+  const toolColor = prompt.toolColor || prompt.tool_color || "#6B7280";
+
+  const status = output_status ? output_status.trim().toLowerCase() : "";
+
+  // ✅ helper to check if attachment is an image
+  const isImageFile = (filename) => {
+    if (!filename) return false;
+    const ext = filename.split(".").pop().toLowerCase();
+    return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+  };
+
+  // ✅ strict priority: image attachment → category image → placeholder
+  let displayImage = null;
+  if (!imageError) {
+    if (attachment_filename && isImageFile(attachment_filename)) {
+      displayImage = `http://localhost:5000/uploads/${attachment_filename}`;
+    } else if (categoryImageUrl) {
+      displayImage = `http://localhost:5000${categoryImageUrl}`;
+    }
+  }
 
   const handleRowClick = () => {
     if (!selectionMode) {
@@ -376,8 +404,8 @@ const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMod
   };
 
   return (
-    <tr 
-      className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`}
+    <tr
+      className={`hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? "bg-blue-50" : ""}`}
       onClick={handleRowClick}
     >
       {selectionMode && (
@@ -397,15 +425,16 @@ const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMod
         <div className="flex items-center">
           <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 mr-4 flex-shrink-0">
             {displayImage ? (
-              <img 
-                src={displayImage} 
+              <img
+                src={displayImage}
                 alt={title}
                 className="w-full h-full object-cover"
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Tag size={16} style={{ color: getCategoryColor(category_name) }} />
+              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                <Tag size={16} className="text-gray-400" />
+                <span className="ml-1 text-xs text-gray-500">No Image</span>
               </div>
             )}
           </div>
@@ -418,34 +447,63 @@ const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMod
         </div>
       </td>
       <td className="px-6 py-4">
-        <span 
-          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-          style={{ backgroundColor: tool_color || '#6B7280' }}
-        >
-          {tool_name || 'No Tool'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
+            style={{ backgroundColor: toolColor }}
+          >
+            {toolName}
+          </span>
+          {ai_tool_model && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+              {ai_tool_model}
+            </span>
+          )}
+          {version && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+              v{version}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-6 py-4">
-        <span 
+        <span
           className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold text-white"
-          style={{ backgroundColor: getCategoryColor(category_name) }}
+          style={{ backgroundColor: prompt.categoryColor || "#6B7280" }}
         >
-          {category_name || 'Uncategorized'}
+          {categoryName}
         </span>
       </td>
       <td className="px-6 py-4">
         <div className="flex items-center">
           {[1, 2, 3, 4, 5].map((star) => (
-            <Star 
-              key={star} 
-              size={12} 
-              className={star <= Math.round(rating || 0) 
-                ? 'text-yellow-400 fill-current' 
-                : 'text-gray-300'
-              } 
+            <Star
+              key={star}
+              size={12}
+              className={
+                star <= Math.round(rating || 0)
+                  ? "text-yellow-400 fill-current"
+                  : "text-gray-300"
+              }
             />
           ))}
-          <span className="ml-1 text-xs text-gray-600">({rating?.toFixed(1) || '0.0'})</span>
+          <span className="ml-1 text-xs text-gray-600">({rating?.toFixed(1) || "0.0"})</span>
+          {output_status && (
+            <span
+              className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium
+                ${
+                  status === "successful"
+                    ? "bg-green-100 text-green-700"
+                    : status === "so-so"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : status === "failure"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+            >
+              {output_status}
+            </span>
+          )}
         </div>
       </td>
       <td className="px-6 py-4 text-sm text-gray-600">{usage_count || 0}</td>
@@ -458,12 +516,12 @@ const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMod
               onToggleFavorite(id, !is_favorite);
             }}
             className={`p-1 rounded transition-colors ${
-              is_favorite ? 'text-red-500' : 'text-gray-400 hover:text-red-500'
+              is_favorite ? "text-red-500" : "text-gray-400 hover:text-red-500"
             }`}
           >
-            <Heart size={16} className={is_favorite ? 'fill-current' : ''} />
+            <Heart size={16} className={is_favorite ? "fill-current" : ""} />
           </button>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               navigator.clipboard.writeText(prompt_text);
@@ -472,7 +530,7 @@ const TableRow = ({ prompt, isSelected, onSelect, onToggleFavorite, selectionMod
           >
             <Copy size={16} />
           </button>
-          <button 
+          <button
             onClick={(e) => e.stopPropagation()}
             className="p-1 text-gray-400 hover:text-green-500 transition-colors"
           >
@@ -488,18 +546,61 @@ const ShareModal = ({ isOpen, onClose, selectedPrompts, prompts }) => {
   if (!isOpen) return null;
 
   const selectedPromptData = prompts.filter(p => selectedPrompts.includes(p.id));
-  
+
+  // 🔹 Helper to format prompt details
+  const buildPromptDetails = (p) => {
+    const tool = p.tool_name || p.toolName || "Not specified";
+    const model = p.ai_tool_model || "Not specified";
+    const category = p.category_name || p.categoryName || "Not specified";
+    const outputStatus = p.output_status || "Not specified";
+
+    return (
+      `Title: ${p.title}\n` +
+      `Tool: ${tool}\n` +
+      `Model: ${model}\n` +
+      `Category: ${category}\n` +
+      `Output Status: ${outputStatus}\n\n` +
+      `Content:\n${p.prompt_text}\n\n` +
+      `Rating: ${p.rating || "N/A"}/5\n` +
+      `Usage: ${p.usage_count || 0} times\n` +
+      `Created: ${new Date(p.created_at).toLocaleDateString()}\n\n` +
+      `---\n\n`
+    );
+  };
+
   const handleWhatsAppShare = () => {
-    const text = selectedPromptData.map(p => `${p.title}: ${p.prompt_text}`).join('\n\n');
-    const encodedText = encodeURIComponent(text);
-    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    const text = selectedPromptData.map(buildPromptDetails).join('');
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleEmailShare = () => {
-    const subject = encodeURIComponent('Shared Prompts from Library');
-    const body = selectedPromptData.map(p => `${p.title}:\n${p.prompt_text}\n\n`).join('');
-    const encodedBody = encodeURIComponent(body);
-    window.open(`mailto:?subject=${subject}&body=${encodedBody}`);
+    const subject = "Shared Prompts from Prompt Manager";
+
+    const body = selectedPromptData.map((p) => {
+      const tool = p.tool_name || p.toolName || "Not specified";
+      const model = p.ai_tool_model || "Not specified";
+      const category = p.category_name || p.categoryName || "Not specified";
+      const outputStatus = p.output_status || "Not specified";
+
+      return (
+        `Title: ${p.title}\n` +
+        `Tool: ${tool}\n` +
+        `Model: ${model}\n` +
+        `Category: ${category}\n` +
+        `Output Status: ${outputStatus}\n\n` +
+        `Content:\n${p.prompt_text}\n\n` +
+        `Rating: ${p.rating || "N/A"}/5\n` +
+        `Usage: ${p.usage_count || 0} times\n` +
+        `Created: ${new Date(p.created_at).toLocaleDateString()}\n\n` +
+        `---\n\n`
+      );
+    }).join("\n");
+
+    // Encode safely for email
+    const safeSubject = encodeURIComponent(subject);
+    const safeBody = encodeURIComponent(body);
+
+    window.location.href = `mailto:?subject=${safeSubject}&body=${safeBody}`;
   };
 
   return (
@@ -511,11 +612,11 @@ const ShareModal = ({ isOpen, onClose, selectedPrompts, prompts }) => {
             <X size={20} />
           </button>
         </div>
-        
+
         <p className="text-gray-600 mb-4">
           Share {selectedPrompts.length} selected prompt{selectedPrompts.length > 1 ? 's' : ''}
         </p>
-        
+
         <div className="space-y-3">
           <button
             onClick={handleWhatsAppShare}
@@ -524,7 +625,7 @@ const ShareModal = ({ isOpen, onClose, selectedPrompts, prompts }) => {
             <MessageCircle size={20} />
             Share via WhatsApp
           </button>
-          
+
           <button
             onClick={handleEmailShare}
             className="w-full flex items-center justify-center gap-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -537,6 +638,7 @@ const ShareModal = ({ isOpen, onClose, selectedPrompts, prompts }) => {
     </div>
   );
 };
+
 
 const FilterDropdown = ({ name, label, value, onChange, options }) => (
   <div className="min-w-0">
@@ -683,38 +785,60 @@ const LibraryPage = () => {
   };
 
   const handleExportSelected = () => {
-    if (selectedPrompts.length === 0) return;
-    
-    const selectedData = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
-    const textContent = selectedData.map(prompt => 
-      `Title: ${prompt.title}\n` +
-      `Tool: ${prompt.tool_name}\n` +
-      `Category: ${prompt.category_name}\n` +
-      `Content: ${prompt.prompt_text}\n` +
-      `Rating: ${prompt.rating}/5\n` +
-      `Usage: ${prompt.usage_count} times\n` +
-      `Created: ${new Date(prompt.created_at).toLocaleDateString()}\n\n` +
-      '---\n\n'
-    ).join('');
-    
-    const element = document.createElement('a');
-    const file = new Blob([textContent], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
-    element.download = `selected-prompts-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
+  if (selectedPrompts.length === 0) return;
 
-  const handleDeleteSelected = () => {
-    if (selectedPrompts.length === 0) return;
-    if (window.confirm(`Are you sure you want to delete ${selectedPrompts.length} selected prompts?`)) {
-      // Here you would make API calls to delete the selected prompts
-      setPrompts(prev => prev.filter(p => !selectedPrompts.includes(p.id)));
-      setFilteredPrompts(prev => prev.filter(p => !selectedPrompts.includes(p.id)));
-      setSelectedPrompts([]);
-    }
-  };
+  const selectedData = filteredPrompts.filter(p => selectedPrompts.includes(p.id));
+  const textContent = selectedData.map(prompt => {
+    const tool = prompt.tool_name || prompt.toolName || "Not specified";
+    const model = prompt.ai_tool_model || "Not specified";
+    const category = prompt.category_name || prompt.categoryName || "Not specified";
+    const outputStatus = prompt.output_status || "Not specified";
+
+    return (
+      `Title: ${prompt.title}\n` +
+      `Tool: ${tool}\n` +
+      `Model: ${model}\n` +
+      `Category: ${category}\n` +
+      `Output Status: ${outputStatus}\n\n` +
+      `Content:\n${prompt.prompt_text}\n\n` +
+      `Rating: ${prompt.rating || "N/A"}/5\n` +
+      `Usage: ${prompt.usage_count || 0} times\n` +
+      `Created: ${new Date(prompt.created_at).toLocaleDateString()}\n\n` +
+      `---\n\n`
+    );
+  }).join('');
+
+  const element = document.createElement('a');
+  const file = new Blob([textContent], { type: 'text/plain' });
+  element.href = URL.createObjectURL(file);
+  element.download = `selected-prompts-${new Date().toISOString().split('T')[0]}.txt`;
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+};
+
+
+  const handleDeleteSelected = async () => {
+  if (selectedPrompts.length === 0) return;
+  if (!window.confirm(`Are you sure you want to delete ${selectedPrompts.length} selected prompts?`)) return;
+
+  try {
+    await axios.post("http://localhost:5000/api/prompts/bulk-delete", {
+      ids: selectedPrompts
+    });
+
+    setPrompts(prev => prev.filter(p => !selectedPrompts.includes(p.id)));
+    setFilteredPrompts(prev => prev.filter(p => !selectedPrompts.includes(p.id)));
+    setSelectedPrompts([]);
+
+    alert("Selected prompts deleted successfully.");
+  } catch (err) {
+    console.error("Failed to bulk delete prompts:", err);
+    alert("Failed to delete selected prompts. Check console for details.");
+  }
+};
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
@@ -971,7 +1095,7 @@ const LibraryPage = () => {
             </button>
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:grid-cols-3 gap-6 justify-items-center">
             {filteredPrompts.map(prompt => (
               <PromptCard
                 key={prompt.id}

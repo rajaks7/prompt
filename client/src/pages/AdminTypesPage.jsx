@@ -1,66 +1,164 @@
-// client/src/pages/AdminTypesPage.jsx
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link } from 'react-router-dom';
-
-const API_URL = 'http://localhost:5000/api/types';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { Pencil, Trash2, Save, X, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const AdminTypesPage = () => {
+  const navigate = useNavigate();
   const [types, setTypes] = useState([]);
-  const [newName, setNewName] = useState('');
-  const [error, setError] = useState('');
+  const [newType, setNewType] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
 
-  const fetchData = async () => {
+  const fetchTypes = async () => {
     try {
-      const response = await axios.get(API_URL);
-      setTypes(response.data);
-    } catch (err) { setError('Failed to fetch prompt types.'); }
+      const res = await axios.get("http://localhost:5000/api/types");
+      setTypes(res.data);
+    } catch (err) {
+      console.error("Failed to fetch types:", err);
+    }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchTypes();
+  }, []);
 
-  const handleAdd = async (e) => {
-    e.preventDefault();
+  const handleAdd = async () => {
+    if (!newType.trim()) return;
     try {
-      await axios.post(API_URL, { name: newName });
-      setNewName('');
-      fetchData();
-    } catch (err) { setError('Failed to add type. Does it already exist?'); }
+      await axios.post("http://localhost:5000/api/types", { name: newType });
+      setNewType("");
+      fetchTypes();
+    } catch (err) {
+      console.error("Failed to add type:", err);
+    }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure?')) {
-      try {
-        await axios.delete(`${API_URL}/${id}`);
-        fetchData();
-      } catch (err) { setError('Failed to delete type.'); }
+    try {
+      await axios.delete(`http://localhost:5000/api/types/${id}`);
+      fetchTypes();
+    } catch (err) {
+      console.error("Failed to delete type:", err);
+    }
+  };
+
+  const handleEditSave = async (id) => {
+    try {
+      await axios.put(`http://localhost:5000/api/types/${id}`, { name: editName });
+      setEditingId(null);
+      fetchTypes();
+    } catch (err) {
+      console.error("Failed to update type:", err);
     }
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="mb-6"><Link to="/admin" className="text-blue-600 hover:underline">&larr; Back to Admin Dashboard</Link></div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin - Manage Prompt Types</h1>
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8 max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Add New Type</h2>
-        <form onSubmit={handleAdd} className="flex space-x-4">
-          <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g., My Prompt" className="flex-grow p-2 border border-gray-300 rounded-md"/>
-          <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700">Add</button>
-        </form>
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">Existing Types</h2>
-        <ul className="space-y-3">
-          {types.map((type) => (
-            <li key={type.id} className="flex justify-between items-center p-3 bg-gray-100 rounded-md">
-              <span>{type.name}</span>
-              <button onClick={() => handleDelete(type.id)} className="text-red-500 hover:text-red-700">Delete</button>
-            </li>
-          ))}
-        </ul>
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate("/admin")}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-6"
+        >
+          <ArrowLeft size={18} />
+          Back to Admin Dashboard
+        </button>
+
+        <h1 className="text-2xl font-bold mb-6">Admin – Prompt Types</h1>
+
+        {/* Add New Type */}
+        <div className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-3 mb-6">
+          <input
+            type="text"
+            placeholder="Type name"
+            value={newType}
+            onChange={(e) => setNewType(e.target.value)}
+            className="flex-1 border px-3 py-2 rounded-lg"
+          />
+          <button
+            onClick={handleAdd}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Add
+          </button>
+        </div>
+
+        {/* Types List */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <table className="w-full border-collapse">
+            <thead className="bg-gray-100 text-left text-sm">
+              <tr>
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2 w-32">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {types.map((t) => (
+                <tr key={t.id} className="border-t">
+                  <td className="px-4 py-2">
+                    {editingId === t.id ? (
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="border px-2 py-1 rounded w-full"
+                      />
+                    ) : (
+                      t.name
+                    )}
+                  </td>
+                  <td className="px-4 py-2 flex gap-2">
+                    {editingId === t.id ? (
+                      <>
+                        <button
+                          onClick={() => handleEditSave(t.id)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <Save size={18} />
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          <X size={18} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingId(t.id);
+                            setEditName(t.name);
+                          }}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(t.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {types.length === 0 && (
+                <tr>
+                  <td colSpan="2" className="text-center py-4 text-gray-500">
+                    No types found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 };
+
 export default AdminTypesPage;
